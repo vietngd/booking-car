@@ -2,10 +2,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../../app/supabase";
 import {
   Loader2,
-  Shield,
   User,
-  XCircle,
-  CheckCircle,
 } from "lucide-react";
 
 interface UserProfile {
