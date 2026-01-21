@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../app/auth-context";
+import { useToast } from "../../hooks/use-toast";
+import { useNotification } from "../../app/notification-context";
+import { useConfirm } from "../../components/common/ConfirmDialog";
 import { supabase } from "../../app/supabase";
 import type { Booking, BookingStatus } from "../../types";
 import {
@@ -19,6 +22,8 @@ import { BookingStatusBadge } from "../../components/common/BookingStatusBadge";
 
 export const AllBookingsPage: React.FC = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const { addNotification } = useNotification();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
@@ -137,21 +142,30 @@ export const AllBookingsPage: React.FC = () => {
             // Actually, if admin tries to approve pending_viet, they skip to... pending_korea?
             // Safer to restrict or allow complete override.
             // Let's restrict for now to ensure flow.
-            alert(
-              `Quy trình yêu cầu: Chờ Sếp Việt -> Chờ Sếp Hàn -> Hành chính. Trạng thái hiện tại: ${currentStatus}`,
-            );
+            toast({
+                title: "Không thể duyệt",
+                description: `Quy trình yêu cầu: Chờ Sếp Việt -> Chờ Sếp Hàn -> Hành chính. Trạng thái hiện tại: ${currentStatus}`,
+                variant: "destructive"
+            });
             setActioningId(null);
             return;
           }
         }
       } else {
-        alert("Bạn không có quyền duyệt đơn này ở trạng thái hiện tại.");
+        toast({
+            title: "Lỗi phân quyền",
+            description: "Bạn không có quyền duyệt đơn này ở trạng thái hiện tại.",
+            variant: "destructive"
+        });
         setActioningId(null);
         return;
       }
 
       if (Object.keys(updates).length === 0) {
-        alert("Không có hành động nào được thực hiện cho trạng thái này.");
+        toast({
+            title: "Thông báo",
+            description: "Không có hành động nào được thực hiện cho trạng thái này.",
+        });
         setActioningId(null);
         return;
       }
@@ -165,18 +179,71 @@ export const AllBookingsPage: React.FC = () => {
 
       if (error) throw error;
 
+      toast({
+        title: "Duyệt đơn thành công",
+        description: `Đã cập nhật trạng thái đơn hàng sang ${updates.status}`,
+      });
+      
+      addNotification({
+        title: "Duyệt đơn thành công",
+        message: `Đơn hàng #${booking.id.slice(0, 8)} đã được duyệt.`,
+        type: "success",
+        user_id: user.id // Self notification
+      });
+
+      // Notify the requester
+      addNotification({
+        title: "Đơn xe được duyệt",
+        message: `Yêu cầu đi ${booking.destination} của bạn đã được duyệt bởi ${user.role}.`,
+        type: "success",
+        user_id: booking.created_by
+      });
+      
+      // If approved by Viet, notify Korea?
+      if (updates.status === 'pending_korea') {
+           addNotification({
+            title: "Đơn chờ duyệt (Từ Sếp Việt)",
+            message: `Có đơn xe mới đã được Sếp Việt duyệt, chờ Sếp Hàn xử lý.`,
+            type: "info",
+            target_role: "manager_korea"
+          });
+      }
+      else if (updates.status === 'pending_admin') {
+           addNotification({
+            title: "Đơn chờ xếp xe",
+            message: `Có đơn xe mới đã được Sếp Hàn duyệt, chờ HCNS xếp xe.`,
+            type: "info",
+            target_role: "admin"
+          });
+      }
+
       await fetchAllBookings();
     } catch (err) {
       console.error("Error updating booking:", err);
-      alert("Không thể cập nhật trạng thái đơn.");
+      toast({
+        title: "Lỗi cập nhật",
+        description: "Không thể cập nhật trạng thái đơn.",
+        variant: "destructive"
+      });
     } finally {
-      setActioningId(null);
+        setActioningId(null);
     }
-  };
+    };
+
+  const { confirm } = useConfirm();
 
   const handleReject = async (booking: Booking) => {
     if (!user || !user?.role) return;
-    if (!confirm("Bạn chắc chắn muốn từ chối đơn này?")) return;
+
+    const confirmed = await confirm({
+      title: "Từ chối đơn đặt xe?",
+      description: "Hành động này không thể hoàn tác. Bạn có chắc chắn muốn từ chối yêu cầu này không?",
+      confirmText: "Từ chối",
+      cancelText: "Hủy",
+      variant: "destructive",
+    });
+
+    if (!confirmed) return;
 
     setActioningId(booking.id);
 
@@ -203,10 +270,34 @@ export const AllBookingsPage: React.FC = () => {
 
       if (error) throw error;
 
+      toast({
+        title: "Đã từ chối đơn",
+        description: `Đã từ chối đơn hàng #${booking.id.slice(0, 8)}`,
+        variant: "destructive"
+      });
+
+      addNotification({
+        title: "Đơn bị từ chối",
+        message: `Bạn đã từ chối đơn hàng #${booking.id.slice(0, 8)}`,
+        type: "warning",
+        user_id: user.id
+      });
+
+      addNotification({
+        title: "Đơn xe bị từ chối",
+        message: `Yêu cầu đi ${booking.destination} của bạn đã bị từ chối.`,
+        type: "error",
+        user_id: booking.created_by
+      });
+
       await fetchAllBookings();
     } catch (err) {
       console.error("Error rejecting booking:", err);
-      alert("Không thể từ chối đơn.");
+      toast({
+        title: "Lỗi",
+        description: "Không thể từ chối đơn.",
+        variant: "destructive"
+      });
     } finally {
       setActioningId(null);
     }

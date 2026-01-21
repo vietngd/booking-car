@@ -9,6 +9,7 @@ import {
   CheckSquare,
   ChevronRight,
 } from "lucide-react";
+import { NotificationList } from "../common/NotificationList";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -133,7 +134,9 @@ export const MainLayout: React.FC = () => {
             {activeItem?.label || "Book Xe Online"}
           </h1>
 
-          <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4">
+            <NotificationList />
+            
             {/* Mobile Sidebar Trigger (Optional) */}
             <div className="lg:hidden">
               <Car className="h-6 w-6 text-blue-600" />

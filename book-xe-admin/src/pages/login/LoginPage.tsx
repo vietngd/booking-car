@@ -1,129 +1,142 @@
 import React, { useState } from "react";
 import { useNavigate, Navigate, Link } from "react-router-dom";
-import { supabase } from "../../app/supabase";
-import { useAuth } from "../../app/auth-context";
+import { supabase } from "@/app/supabase";
+import { useAuth } from "@/app/auth-context";
 import { Car, Loader2 } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+
+const loginSchema = z.object({
+  email: z.string().email("Email không hợp lệ"),
+  password: z.string().min(1, "Vui lòng nhập mật khẩu"),
+});
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { user, session } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
-  // If already logged in, redirect
+  const form = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
   if (user && session) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
+  async function onSubmit(values: z.infer<typeof loginSchema>) {
+    setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: values.email,
+        password: values.password,
       });
 
       if (error) {
-        setError(error.message);
+        toast({
+          variant: "destructive",
+          title: "Đăng nhập thất bại",
+          description: error.message || "Email hoặc mật khẩu không đúng",
+        });
       } else {
+        toast({
+          title: "Thành công",
+          description: "Đăng nhập thành công",
+        });
         navigate("/dashboard");
       }
     } catch (err) {
-      setError("Đã có lỗi xảy ra. Vui lòng thử lại sau.");
+      toast({
+        variant: "destructive",
+        title: "Lỗi hệ thống",
+        description: "Vui lòng thử lại sau",
+      });
       console.error(err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center bg-blue-600 p-4 rounded-2xl shadow-xl shadow-blue-200 mb-4 animate-bounce-subtle">
-            <Car className="h-8 w-8 text-white" />
-          </div>
-          <h2 className="text-3xl font-bold text-slate-900 tracking-tight">
-            Chào mừng quay lại
-          </h2>
-          <p className="text-slate-500 mt-2">Hệ thống đặt xe nội bộ Công ty</p>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-8">
+        <div className="flex flex-col items-center justify-center text-center">
+            <div className="bg-primary p-3 rounded-xl mb-4">
+                <Car className="h-8 w-8 text-primary-foreground" />
+            </div>
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+                Chào mừng quay lại
+            </h2>
+            <p className="text-slate-500 mt-2">Hệ thống đặt xe nội bộ Công ty</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Email công ty
-              </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  required
-                  className="input-field pl-12"
-                  placeholder="name@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+        <div className="bg-white p-8 rounded-xl shadow-lg border border-slate-100">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email công ty</FormLabel>
+                      <FormControl>
+                        <Input placeholder="name@company.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Mật khẩu
-              </label>
-              <div className="relative">
-                <input
-                  type="password"
-                  required
-                  className="input-field pl-12"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mật khẩu</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-            </div>
+                
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Đang đăng nhập...
+                        </>
+                    ) : (
+                        "Đăng nhập"
+                    )}
+                </Button>
+              </form>
+            </Form>
 
-            {error && (
-              <div className="bg-rose-50 text-rose-600 text-sm p-3 rounded-lg border border-rose-100 flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-600"></span>
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full py-3 text-base shadow-lg shadow-blue-200"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Đang đăng nhập...
-                </div>
-              ) : (
-                "Đăng nhập"
-              )}
-            </button>
-          </form>
-
-          <div className="mt-8 pt-8 border-t border-slate-100 text-center">
-            <p className="text-sm text-slate-400">
-              Chưa có tài khoản?{" "}
-              <Link
-                to="/register"
-                className="text-blue-600 font-medium hover:underline"
-              >
-                Đăng ký ngay
-              </Link>
-            </p>
-          </div>
+             <div className="mt-6 text-center text-sm">
+                <span className="text-slate-500">Chưa có tài khoản? </span>
+                <Link to="/register" className="font-medium text-primary hover:underline">
+                  Đăng ký ngay
+                </Link>
+             </div>
         </div>
       </div>
     </div>

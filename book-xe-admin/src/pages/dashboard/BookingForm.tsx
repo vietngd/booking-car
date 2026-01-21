@@ -8,6 +8,8 @@ import { RHFInput } from "../../components/common/form/RHFInput";
 import { RHFSelect } from "../../components/common/form/RHFSelect";
 import { Loader2, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../../hooks/use-toast";
+import { useNotification } from "../../app/notification-context";
 
 const bookingSchema = z.object({
   requester_name: z.string().min(1, "Vui lòng nhập tên người yêu cầu"),
@@ -65,6 +67,8 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { addNotification } = useNotification();
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
 
@@ -110,13 +114,34 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
       if (error) throw error;
 
       reset();
+      
+      toast({
+        title: "Gửi yêu cầu thành công!",
+        description: "Yêu cầu đặt xe của bạn đã được gửi và đang chờ duyệt.",
+        duration: 5000,
+      });
+
+      addNotification({
+        title: "Yêu cầu đặt xe mới",
+        message: `Bạn đã tạo yêu cầu đặt xe đi ${data.destination}`,
+        type: "success",
+        user_id: user.id
+      });
+
+      // Notify Managers
+      addNotification({
+        title: "Yêu cầu đặt xe mới",
+        message: `${data.requester_name} vừa tạo yêu cầu đi ${data.destination}`,
+        type: "info",
+        target_role: "manager_viet"
+      });
+
       if (onSuccess) {
         onSuccess();
       } else {
         // If used as a standalone page
         navigate("/dashboard");
       }
-      alert("Gửi yêu cầu thành công!");
     } catch (err: any) {
       console.error(err);
       setGeneralError(err.message || "Có lỗi xảy ra khi gửi yêu cầu.");
