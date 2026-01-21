@@ -39,6 +39,12 @@ export const MainLayout: React.FC = () => {
       path: "/admin/bookings",
       roles: ["admin"],
     },
+    {
+      label: "Quản lý nhân sự",
+      icon: UserIcon,
+      path: "/admin/users",
+      roles: ["admin"],
+    },
   ];
 
   const activeItem = navItems.find((item) =>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, Link } from "react-router-dom";
 import { supabase } from "../../app/supabase";
 import { useAuth } from "../../app/auth-context";
 import { Car, Loader2 } from "lucide-react";
@@ -116,9 +116,12 @@ export const LoginPage: React.FC = () => {
           <div className="mt-8 pt-8 border-t border-slate-100 text-center">
             <p className="text-sm text-slate-400">
               Chưa có tài khoản?{" "}
-              <span className="text-blue-600 font-medium cursor-help">
-                Liên hệ Admin
-              </span>
+              <Link
+                to="/register"
+                className="text-blue-600 font-medium hover:underline"
+              >
+                Đăng ký ngay
+              </Link>
             </p>
           </div>
         </div>
