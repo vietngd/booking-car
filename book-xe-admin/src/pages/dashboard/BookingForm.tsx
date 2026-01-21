@@ -13,11 +13,11 @@ const bookingSchema = z.object({
   requester_name: z.string().min(1, "Vui lòng nhập tên người yêu cầu"),
   requester_department: z.string().min(1, "Vui lòng nhập bộ phận"),
   vehicle_type: z.string().min(1, "Vui lòng chọn loại xe"),
-  cargo_type: z.string().min(1, "Vui lòng nhập loại hàng hóa"),
-  cargo_weight: z.string().min(1, "Vui lòng nhập trọng lượng"),
+  cargo_type: z.string().min(1, "Vui lòng chọn loại hàng hóa"),
+  cargo_weight: z.string().min(1, "Vui lòng chọn trọng lượng"),
   destination: z.string().min(1, "Vui lòng nhập điểm đến"),
   travel_time: z.string().min(1, "Vui lòng chọn thời gian đi"),
-  reason: z.string().min(1, "Vui lòng nhập lý do"),
+  reason: z.string().min(1, "Vui lòng nhập lý do sử dụng"),
 });
 
 type BookingFormData = z.infer<typeof bookingSchema>;
@@ -29,6 +29,23 @@ const vehicleOptions = [
   { label: "Xe nâng", value: "Xe nâng" },
   { label: "Xe cẩu", value: "Xe cẩu" },
   { label: "Khác", value: "Khác" },
+];
+
+const cargoTypeOptions = [
+  { label: "Nguyên vật liệu", value: "Nguyên vật liệu" },
+  { label: "Thành phẩm", value: "Thành phẩm" },
+  { label: "Máy móc / Thiết bị", value: "Máy móc / Thiết bị" },
+  { label: "Phế liệu", value: "Phế liệu" },
+  { label: "Văn phòng phẩm / Đồ dùng", value: "Văn phòng phẩm / Đồ dùng" },
+  { label: "Khác", value: "Khác" },
+];
+
+const cargoWeightOptions = [
+  { label: "Dưới 100kg", value: "Dưới 100kg" },
+  { label: "100kg - 500kg", value: "100kg - 500kg" },
+  { label: "500kg - 1 tấn", value: "500kg - 1 tấn" },
+  { label: "1 tấn - 2 tấn", value: "1 tấn - 2 tấn" },
+  { label: "Trên 2 tấn", value: "Trên 2 tấn" },
 ];
 
 export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
@@ -117,6 +134,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
             register={register}
             errors={errors}
             placeholder="Họ và tên"
+            required
           />
           <RHFInput
             name="requester_department"
@@ -124,6 +142,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
             register={register}
             errors={errors}
             placeholder="Ví dụ: Kho, Sales..."
+            required
           />
         </div>
 
@@ -134,6 +153,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
             register={register}
             errors={errors}
             options={vehicleOptions}
+            required
           />
           <RHFInput
             name="travel_time"
@@ -141,23 +161,28 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
             type="datetime-local"
             register={register}
             errors={errors}
+            required
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <RHFInput
+          <RHFSelect
             name="cargo_type"
             label="Loại hàng hóa"
             register={register}
             errors={errors}
-            placeholder="Ví dụ: Nguyên vật liệu, Máy móc..."
+            options={cargoTypeOptions}
+            placeholder="Chọn loại hàng hóa..."
+            required
           />
-          <RHFInput
+          <RHFSelect
             name="cargo_weight"
             label="Trọng lượng ước tính"
             register={register}
             errors={errors}
-            placeholder="Ví dụ: 500kg"
+            options={cargoWeightOptions}
+            placeholder="Chọn trọng lượng..."
+            required
           />
         </div>
 
@@ -167,6 +192,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
           register={register}
           errors={errors}
           placeholder="Ví dụ: Xưởng 1 -> Xưởng 3"
+          required
         />
 
         <div>

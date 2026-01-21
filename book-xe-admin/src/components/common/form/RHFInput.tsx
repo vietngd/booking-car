@@ -15,6 +15,7 @@ interface RHFInputProps<
   errors?: FieldErrors<T>;
   icon?: React.ReactNode;
   containerClassName?: string;
+  required?: boolean;
 }
 
 export const RHFInput = <T extends FieldValues>({
@@ -36,6 +37,7 @@ export const RHFInput = <T extends FieldValues>({
         className="block text-sm font-medium text-slate-700 mb-1.5 ml-1"
       >
         {label}
+        {props.required && <span className="text-rose-500 ml-1">*</span>}
       </label>
       <div className="relative">
         {icon && (
