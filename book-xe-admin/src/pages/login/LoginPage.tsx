@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "../../app/supabase";
 import { useAuth } from "../../app/auth-context";
-import { Car, Lock, Mail, Loader2 } from "lucide-react";
+import { Car, Loader2 } from "lucide-react";
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
