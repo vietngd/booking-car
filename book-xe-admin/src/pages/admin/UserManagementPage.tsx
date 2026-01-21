@@ -1,17 +1,23 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../app/supabase";
-import {
-  Loader2,
-  User,
-} from "lucide-react";
+import { Loader2, User, Search } from "lucide-react";
+import type { UserPosition } from "../../types";
 
 interface UserProfile {
   id: string;
   email: string;
   role: "admin" | "staff";
+  position: UserPosition;
   full_name?: string;
   created_at: string;
 }
+
+const POSITION_LABELS: Record<UserPosition, string> = {
+  staff: "Nhân viên",
+  manager_viet: "Sếp Việt (Duyệt)",
+  manager_korea: "Sếp Hàn (Duyệt)",
+  admin: "Hành chính (Admin)",
+};
 
 export const UserManagementPage: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -40,26 +46,35 @@ export const UserManagementPage: React.FC = () => {
     }
   };
 
-  const handleRoleChange = async (
+  const handlePositionChange = async (
     userId: string,
-    newRole: "admin" | "staff",
+    newPosition: UserPosition,
   ) => {
     try {
       setUpdating(userId);
+
+      // Determine new role based on position
+      const newRole = newPosition === "admin" ? "admin" : "staff";
+
       const { error } = await supabase
         .from("users")
-        .update({ role: newRole })
+        .update({
+          position: newPosition,
+          role: newRole,
+        })
         .eq("id", userId);
 
       if (error) throw error;
 
       // Update local state
       setUsers(
-        users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)),
+        users.map((u) =>
+          u.id === userId ? { ...u, position: newPosition, role: newRole } : u,
+        ),
       );
     } catch (error) {
-      console.error("Error updating role:", error);
-      alert("Không thể cập nhật quyền. Vui lòng thử lại.");
+      console.error("Error updating position:", error);
+      alert("Không thể cập nhật chức vụ. Vui lòng thử lại.");
     } finally {
       setUpdating(null);
     }
@@ -72,12 +87,12 @@ export const UserManagementPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Quản lý nhân sự</h1>
           <p className="text-slate-500">
-            Quản lý tài khoản và phân quyền người dùng
+            Phân quyền và quản lý chức vụ người dùng
           </p>
         </div>
       </div>
@@ -85,6 +100,9 @@ export const UserManagementPage: React.FC = () => {
       {/* Search and Filters */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
         <div className="relative max-w-md">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-slate-400" />
+          </div>
           <input
             type="text"
             className="input-field pl-10"
@@ -108,10 +126,10 @@ export const UserManagementPage: React.FC = () => {
                   Email
                 </th>
                 <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Vai trò
+                  Chức vụ / Vai trò
                 </th>
                 <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
-                  Thao tác
+                  Thay đổi chức vụ
                 </th>
               </tr>
             </thead>
@@ -150,13 +168,15 @@ export const UserManagementPage: React.FC = () => {
                     <td className="py-4 px-6 text-slate-600">{user.email}</td>
                     <td className="py-4 px-6">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                          user.role === "admin"
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+                          user.position === "admin"
                             ? "bg-purple-50 text-purple-700 border-purple-200"
-                            : "bg-slate-100 text-slate-700 border-slate-200"
+                            : user.position === "staff"
+                              ? "bg-slate-100 text-slate-700 border-slate-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200" // Managers
                         }`}
                       >
-                        {user.role === "admin" ? "Admin" : "Nhân viên"}
+                        {POSITION_LABELS[user.position] || user.position}
                       </span>
                     </td>
                     <td className="py-4 px-6 text-right">
@@ -167,17 +187,19 @@ export const UserManagementPage: React.FC = () => {
                         </span>
                       ) : (
                         <select
-                          value={user.role}
+                          value={user.position || "staff"}
                           onChange={(e) =>
-                            handleRoleChange(
+                            handlePositionChange(
                               user.id,
-                              e.target.value as "admin" | "staff",
+                              e.target.value as UserPosition,
                             )
                           }
-                          className="text-sm border-slate-200 rounded-lg focus:ring-blue-500 focus:border-blue-500 py-1 pl-2 pr-8"
+                          className="text-sm border-slate-200 rounded-lg focus:ring-blue-500 focus:border-blue-500 py-1.5 pl-2 pr-8 shadow-sm"
                         >
                           <option value="staff">Nhân viên</option>
-                          <option value="admin">Admin</option>
+                          <option value="manager_viet">Sếp Việt</option>
+                          <option value="manager_korea">Sếp Hàn</option>
+                          <option value="admin">Hành chính (Admin)</option>
                         </select>
                       )}
                     </td>
