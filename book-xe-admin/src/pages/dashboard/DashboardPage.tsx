@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../app/auth-context";
 import { supabase } from "../../app/supabase";
-import type { Booking, UserPosition } from "../../types";
+import type { Booking } from "../../types";
 import { BookingForm } from "./BookingForm";
 import { BookingList } from "./BookingList";
 import { ApprovalList } from "./ApprovalList";
-import {
-  PlusCircle,
-  History,
-  CheckSquare,
-  Loader2,
-} from "lucide-react";
+import { PlusCircle, History as HistoryIcon, CheckSquare } from "lucide-react";
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -20,49 +15,24 @@ export const DashboardPage: React.FC = () => {
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userPosition, setUserPosition] = useState<UserPosition>("staff");
-  const [positionLoading, setPositionLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
-      fetchUserPosition();
+      if (["manager_viet", "manager_korea", "admin"].includes(user.role)) {
+        setActiveTab("approvals");
+      }
     }
   }, [user]);
 
   useEffect(() => {
-    if (user && !positionLoading) {
+    if (user) {
       if (activeTab === "my-history") {
         fetchMyBookings();
       } else if (activeTab === "approvals") {
         fetchPendingApprovals();
       }
     }
-  }, [user, activeTab, positionLoading]);
-
-  const fetchUserPosition = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("users")
-        .select("position")
-        .eq("id", user?.id)
-        .single();
-
-      if (!error && data) {
-        setUserPosition(data.position as UserPosition);
-        // Default view for managers/admin might be approvals if they have any?
-        // For now, let's keep 'create' as default or 'my-history'
-        if (
-          ["manager_viet", "manager_korea", "admin"].includes(data.position)
-        ) {
-          setActiveTab("approvals");
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching position", error);
-    } finally {
-      setPositionLoading(false);
-    }
-  };
+  }, [user, activeTab]);
 
   const fetchMyBookings = async () => {
     if (!user) return;
@@ -91,11 +61,11 @@ export const DashboardPage: React.FC = () => {
         .select("*")
         .order("created_at", { ascending: true });
 
-      if (userPosition === "manager_viet") {
+      if (user?.role === "manager_viet") {
         query = query.eq("status", "pending_viet");
-      } else if (userPosition === "manager_korea") {
+      } else if (user?.role === "manager_korea") {
         query = query.eq("status", "pending_korea");
-      } else if (userPosition === "admin") {
+      } else if (user?.role === "admin") {
         query = query.eq("status", "pending_admin");
       } else {
         // Staff shouldn't see this tab usually, or empty
@@ -114,16 +84,8 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  if (positionLoading) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
   const canApprove = ["manager_viet", "manager_korea", "admin"].includes(
-    userPosition,
+    user?.role || "staff",
   );
 
   return (
@@ -186,7 +148,7 @@ export const DashboardPage: React.FC = () => {
               }
             `}
           >
-            <History
+            <HistoryIcon
               className={`-ml-0.5 mr-2 h-5 w-5 ${activeTab === "my-history" ? "text-blue-500" : "text-slate-400 group-hover:text-slate-500"}`}
             />
             Lịch sử của tôi
@@ -212,11 +174,7 @@ export const DashboardPage: React.FC = () => {
             loading={loading}
             onRefresh={fetchPendingApprovals}
             approverRole={
-              userPosition === "manager_viet"
-                ? "viet"
-                : userPosition === "manager_korea"
-                  ? "korea"
-                  : "admin"
+              user?.role as "manager_viet" | "manager_korea" | "admin"
             }
           />
         )}

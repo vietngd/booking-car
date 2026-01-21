@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS public.users (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
-    role TEXT CHECK (role IN ('admin', 'staff')) NOT NULL DEFAULT 'staff'
+    role TEXT CHECK (role IN ('admin', 'staff', 'manager_viet', 'manager_korea')) NOT NULL DEFAULT 'staff'
 );
 
 CREATE TABLE IF NOT EXISTS public.bookings (
@@ -26,12 +26,12 @@ CREATE POLICY "Users can view their own profile"
 ON public.users FOR SELECT 
 USING (auth.uid() = id);
 
-CREATE POLICY "Admins can view all profiles" 
+CREATE POLICY "Privileged users can view all profiles" 
 ON public.users FOR SELECT 
 USING (
   EXISTS (
     SELECT 1 FROM public.users 
-    WHERE id = auth.uid() AND role = 'admin'
+    WHERE id = auth.uid() AND role IN ('admin', 'manager_viet', 'manager_korea')
   )
 );
 
@@ -44,21 +44,21 @@ CREATE POLICY "Staff can create bookings"
 ON public.bookings FOR INSERT 
 WITH CHECK (auth.uid() = created_by);
 
-CREATE POLICY "Admins can view all bookings" 
+CREATE POLICY "Privileged users can view all bookings" 
 ON public.bookings FOR SELECT 
 USING (
   EXISTS (
     SELECT 1 FROM public.users 
-    WHERE id = auth.uid() AND role = 'admin'
+    WHERE id = auth.uid() AND role IN ('admin', 'manager_viet', 'manager_korea')
   )
 );
 
-CREATE POLICY "Admins can update bookings" 
+CREATE POLICY "Privileged users can update bookings" 
 ON public.bookings FOR UPDATE 
 USING (
   EXISTS (
     SELECT 1 FROM public.users 
-    WHERE id = auth.uid() AND role = 'admin'
+    WHERE id = auth.uid() AND role IN ('admin', 'manager_viet', 'manager_korea')
   )
 );
 

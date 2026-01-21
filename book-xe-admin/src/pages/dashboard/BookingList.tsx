@@ -1,11 +1,11 @@
 import React from "react";
 import type { Booking } from "../../types";
 import { BookingStatusBadge } from "../../components/common/BookingStatusBadge";
-import  { Table, Column } from "../../components/common/table/Table";
+import { Table, type Column } from "../../components/common/table/Table";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 
-interface BookingListProps {  
+interface BookingListProps {
   bookings: Booking[];
   loading: boolean;
 }

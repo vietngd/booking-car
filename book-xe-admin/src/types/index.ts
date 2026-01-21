@@ -1,13 +1,10 @@
-export type Role = 'admin' | 'staff';
-
-export type UserPosition = 'staff' | 'manager_viet' | 'manager_korea' | 'admin';
+export type Role = 'admin' | 'staff' | 'manager_viet' | 'manager_korea';
 
 export interface User {
   id: string;
   email: string;
   role: Role;
   full_name?: string;
-  position?: UserPosition;
   user_metadata?: {
     full_name?: string;
   };
@@ -42,6 +39,10 @@ export interface Booking {
   viet_approval_status?: 'pending' | 'approved' | 'rejected';
   korea_approval_status?: 'pending' | 'approved' | 'rejected';
   admin_approval_status?: 'pending' | 'approved' | 'rejected';
+  
+  // General/Final approval info
+  approved_at?: string;
+  approved_by?: string;
   
   created_by: string;
   created_at: string;

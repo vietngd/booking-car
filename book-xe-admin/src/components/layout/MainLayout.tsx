@@ -31,13 +31,13 @@ export const MainLayout: React.FC = () => {
       label: "Dashboard",
       icon: LayoutDashboard,
       path: "/dashboard",
-      roles: ["admin", "staff"],
+      roles: ["staff", "manager_viet", "manager_korea", "admin"],
     },
     {
       label: "Quản lý đơn",
       icon: CheckSquare,
       path: "/admin/bookings",
-      roles: ["admin"],
+      roles: ["manager_viet", "manager_korea", "admin"],
     },
     {
       label: "Quản lý nhân sự",
@@ -68,7 +68,9 @@ export const MainLayout: React.FC = () => {
 
         <nav className="flex-1 px-4 space-y-2 mt-4">
           {navItems
-            .filter((item) => item.roles.includes(user?.role || ""))
+            .filter((item) =>
+              item.roles.includes((user?.role as string) || "staff"),
+            )
             .map((item) => {
               const isActive = location.pathname.startsWith(item.path);
               const Icon = item.icon;
@@ -110,7 +112,9 @@ export const MainLayout: React.FC = () => {
               <p className="text-sm font-semibold text-slate-900 truncate">
                 {user?.email}
               </p>
-              <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
+              <p className="text-xs text-slate-500 capitalize">
+                {user?.role?.replace("_", " ")}
+              </p>
             </div>
             <button
               onClick={handleSignOut}

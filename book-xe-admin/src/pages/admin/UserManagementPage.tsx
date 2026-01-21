@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../app/supabase";
 import { Loader2, User, Search } from "lucide-react";
-import type { UserPosition } from "../../types";
+import type { Role } from "../../types";
 
 interface UserProfile {
   id: string;
   email: string;
-  role: "admin" | "staff";
-  position: UserPosition;
+  role: Role;
   full_name?: string;
   created_at: string;
 }
 
-const POSITION_LABELS: Record<UserPosition, string> = {
+const ROLE_LABELS: Record<Role, string> = {
   staff: "Nhân viên",
   manager_viet: "Sếp Việt (Duyệt)",
   manager_korea: "Sếp Hàn (Duyệt)",
@@ -46,20 +45,13 @@ export const UserManagementPage: React.FC = () => {
     }
   };
 
-  const handlePositionChange = async (
-    userId: string,
-    newPosition: UserPosition,
-  ) => {
+  const handleRoleChange = async (userId: string, newRole: Role) => {
     try {
       setUpdating(userId);
-
-      // Determine new role based on position
-      const newRole = newPosition === "admin" ? "admin" : "staff";
 
       const { error } = await supabase
         .from("users")
         .update({
-          position: newPosition,
           role: newRole,
         })
         .eq("id", userId);
@@ -68,13 +60,11 @@ export const UserManagementPage: React.FC = () => {
 
       // Update local state
       setUsers(
-        users.map((u) =>
-          u.id === userId ? { ...u, position: newPosition, role: newRole } : u,
-        ),
+        users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)),
       );
     } catch (error) {
-      console.error("Error updating position:", error);
-      alert("Không thể cập nhật chức vụ. Vui lòng thử lại.");
+      console.error("Error updating role:", error);
+      alert("Không thể cập nhật vai trò. Vui lòng thử lại.");
     } finally {
       setUpdating(null);
     }
@@ -92,7 +82,7 @@ export const UserManagementPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Quản lý nhân sự</h1>
           <p className="text-slate-500">
-            Phân quyền và quản lý chức vụ người dùng
+            Phân quyền và quản lý vai trò người dùng
           </p>
         </div>
       </div>
@@ -126,10 +116,10 @@ export const UserManagementPage: React.FC = () => {
                   Email
                 </th>
                 <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Chức vụ / Vai trò
+                  Vai trò
                 </th>
                 <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
-                  Thay đổi chức vụ
+                  Thay đổi vai trò
                 </th>
               </tr>
             </thead>
@@ -169,14 +159,14 @@ export const UserManagementPage: React.FC = () => {
                     <td className="py-4 px-6">
                       <span
                         className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
-                          user.position === "admin"
+                          user.role === "admin"
                             ? "bg-purple-50 text-purple-700 border-purple-200"
-                            : user.position === "staff"
+                            : user.role === "staff"
                               ? "bg-slate-100 text-slate-700 border-slate-200"
                               : "bg-blue-50 text-blue-700 border-blue-200" // Managers
                         }`}
                       >
-                        {POSITION_LABELS[user.position] || user.position}
+                        {ROLE_LABELS[user.role] || user.role}
                       </span>
                     </td>
                     <td className="py-4 px-6 text-right">
@@ -187,12 +177,9 @@ export const UserManagementPage: React.FC = () => {
                         </span>
                       ) : (
                         <select
-                          value={user.position || "staff"}
+                          value={user.role || "staff"}
                           onChange={(e) =>
-                            handlePositionChange(
-                              user.id,
-                              e.target.value as UserPosition,
-                            )
+                            handleRoleChange(user.id, e.target.value as Role)
                           }
                           className="text-sm border-slate-200 rounded-lg focus:ring-blue-500 focus:border-blue-500 py-1.5 pl-2 pr-8 shadow-sm"
                         >

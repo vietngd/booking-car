@@ -1,14 +1,14 @@
 import React from "react";
 
-type BookingStatus =
-  | "pending"
-  | "pending_viet"
-  | "pending_korea"
-  | "pending_admin"
-  | "approved"
-  | "rejected"
-  | "completed"
-  | "cancelled";
+// type BookingStatus =
+//   | "pending"
+//   | "pending_viet"
+//   | "pending_korea"
+//   | "pending_admin"
+//   | "approved"
+//   | "rejected"
+//   | "completed"
+//   | "cancelled";
 
 interface BookingStatusBadgeProps {
   status: string; // Type loosening to string for easier DB mapping
@@ -20,15 +20,15 @@ const statusConfig: Record<string, { label: string; className: string }> = {
     className: "bg-slate-100 text-slate-700 border-slate-200",
   },
   pending_viet: {
-    label: "Chờ Sếp Việt",
+    label: "Chờ Sếp Việt duyệt",
     className: "bg-amber-50 text-amber-700 border-amber-200",
   },
   pending_korea: {
-    label: "Chờ Sếp Hàn",
+    label: "Chờ Sếp Hàn duyệt",
     className: "bg-orange-50 text-orange-700 border-orange-200",
   },
   pending_admin: {
-    label: "Chờ Hành chính",
+    label: "Chờ Hành chính duyệt",
     className: "bg-blue-50 text-blue-700 border-blue-200",
   },
   approved: {

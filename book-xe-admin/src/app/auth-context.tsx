@@ -60,7 +60,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("Error fetching user profile:", error);
         setUser({ id, email, role: "staff" }); // Default to staff
       } else {
-        setUser({ id, email, role: data.role as Role });
+        setUser({
+          id,
+          email,
+          role: data.role as Role,
+        });
       }
     } catch (err) {
       console.error("Unexpected error fetching profile:", err);

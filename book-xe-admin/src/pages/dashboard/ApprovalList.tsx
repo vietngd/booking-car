@@ -1,7 +1,7 @@
-  import React, { useState } from "react";
+import React, { useState } from "react";
 import type { Booking } from "../../types";
-import { BookingStatusBadge } from "../../components/common/BookingStatusBadge";
-import { Table, Column } from "../../components/common/table/Table";
+import { Table, type Column } from "../../components/common/table/Table";
+
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { supabase } from "../../app/supabase";
@@ -11,7 +11,7 @@ interface ApprovalListProps {
   bookings: Booking[];
   loading: boolean;
   onRefresh: () => void;
-  approverRole: "viet" | "korea" | "admin";
+  approverRole: "manager_viet" | "manager_korea" | "admin";
 }
 
 export const ApprovalList: React.FC<ApprovalListProps> = ({
@@ -27,26 +27,35 @@ export const ApprovalList: React.FC<ApprovalListProps> = ({
     setProcessingId(booking.id);
 
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       let updates: any = {};
 
       // Logic flow
-      if (approverRole === "viet") {
+      if (approverRole === "manager_viet") {
         updates = {
           status: "pending_korea",
           viet_approval_status: "approved",
-          // approver_viet_id: auth.uid() // Trigger handles this usually or we allow RLS to update
+          approver_viet_id: user?.id,
         };
-      } else if (approverRole === "korea") {
+      } else if (approverRole === "manager_korea") {
         updates = {
           status: "pending_admin",
           korea_approval_status: "approved",
+          approver_korea_id: user?.id,
         };
       } else if (approverRole === "admin") {
         updates = {
           status: "approved",
           admin_approval_status: "approved",
+          approved_by: user?.id,
+          approved_at: new Date().toISOString(),
         };
       }
+
+      console.log("Approving with updates:", updates);
 
       const { error } = await supabase
         .from("bookings")
@@ -67,16 +76,26 @@ export const ApprovalList: React.FC<ApprovalListProps> = ({
     if (!confirm("Bạn có chắc chắn muốn từ chối yêu cầu này?")) return;
     setProcessingId(booking.id);
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       const { error } = await supabase
         .from("bookings")
         .update({
           status: "rejected",
-          // Update specific status too?
-          [approverRole === "viet"
-            ? "viet_approval_status"
-            : approverRole === "korea"
-              ? "korea_approval_status"
-              : "admin_approval_status"]: "rejected",
+          approved_by: user?.id,
+          approved_at: new Date().toISOString(),
+          // Update specific status too
+          ...(approverRole === "manager_viet" && {
+            viet_approval_status: "rejected",
+          }),
+          ...(approverRole === "manager_korea" && {
+            korea_approval_status: "rejected",
+          }),
+          ...(approverRole === "admin" && {
+            admin_approval_status: "rejected",
+          }),
         })
         .eq("id", booking.id);
 
