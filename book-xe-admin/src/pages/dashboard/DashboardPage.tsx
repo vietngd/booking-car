@@ -10,7 +10,6 @@ import {
   Calendar,
   CarFront,
   MessageSquare,
-  ChevronRight,
   Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
