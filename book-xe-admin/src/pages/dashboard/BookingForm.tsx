@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 
 const bookingSchema = z.object({
   requester_name: z.string().min(1, "Vui lòng nhập tên người yêu cầu"),
-  requester_department: z.string().min(1, "Vui lòng nhập bộ phận"),
+  requester_department: z.string().min(1, "Vui lòng chọn bộ phận"),
   vehicle_type: z.string().min(1, "Vui lòng chọn loại xe"),
   cargo_type: z.string().min(1, "Vui lòng chọn loại hàng hóa"),
   cargo_weight: z.string().min(1, "Vui lòng chọn trọng lượng"),
@@ -28,6 +28,18 @@ const vehicleOptions = [
   { label: "Xe bán tải", value: "Xe bán tải" },
   { label: "Xe nâng", value: "Xe nâng" },
   { label: "Xe cẩu", value: "Xe cẩu" },
+  { label: "Khác", value: "Khác" },
+];
+
+const departmentOptions = [
+  { label: "Kho (Warehouse)", value: "Kho" },
+  { label: "Sản xuất (Production)", value: "Sản xuất" },
+  { label: "Kế toán (Accounting)", value: "Kế toán" },
+  { label: "Nhân sự (HR)", value: "Nhân sự" },
+  { label: "Sales / Marketing", value: "Sales" },
+  { label: "Kỹ thuật (Engineering)", value: "Kỹ thuật" },
+  { label: "IT", value: "IT" },
+  { label: "Bảo vệ (Security)", value: "Bảo vệ" },
   { label: "Khác", value: "Khác" },
 ];
 
@@ -126,7 +138,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <RHFInput
             name="requester_name"
@@ -136,12 +148,13 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
             placeholder="Họ và tên"
             required
           />
-          <RHFInput
+          <RHFSelect
             name="requester_department"
             label="Bộ phận / Phòng ban"
             register={register}
             errors={errors}
-            placeholder="Ví dụ: Kho, Sales..."
+            options={departmentOptions}
+            placeholder="Chọn bộ phận..."
             required
           />
         </div>
@@ -197,7 +210,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5 ml-1">
-            Lý do sử dụng
+            Lý do sử dụng <span className="text-rose-500">*</span>
           </label>
           <textarea
             {...register("reason")}
@@ -206,7 +219,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
             placeholder="Mô tả chi tiết mục đích sử dụng..."
           ></textarea>
           {errors.reason && (
-            <p className="mt-1 text-sm text-rose-600 ml-1">
+            <p className="mt-1 text-sm text-rose-600 ml-1 font-medium">
               {errors.reason.message}
             </p>
           )}

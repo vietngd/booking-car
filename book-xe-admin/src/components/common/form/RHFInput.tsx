@@ -26,6 +26,7 @@ export const RHFInput = <T extends FieldValues>({
   icon,
   containerClassName = "",
   className = "",
+  required,
   ...props
 }: RHFInputProps<T>) => {
   const errorMessage = errors?.[name]?.message as string | undefined;
@@ -37,7 +38,7 @@ export const RHFInput = <T extends FieldValues>({
         className="block text-sm font-medium text-slate-700 mb-1.5 ml-1"
       >
         {label}
-        {props.required && <span className="text-rose-500 ml-1">*</span>}
+        {required && <span className="text-rose-500 ml-1">*</span>}
       </label>
       <div className="relative">
         {icon && (
