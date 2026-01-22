@@ -37,7 +37,7 @@ export const MainLayout: React.FC = () => {
       label: "Quản lý đơn",
       icon: CheckSquare,
       path: "/admin/bookings",
-      roles: ["manager_viet", "manager_korea", "admin"],
+      roles: ["admin"],
     },
     {
       label: "Quản lý nhân sự",

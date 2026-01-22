@@ -8,6 +8,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,18 +34,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth event:", event);
       setSession(session);
+
       if (session) {
         fetchUserProfile(session.user.id, session.user.email!);
       } else {
         setUser(null);
         setLoading(false);
       }
+
+      if (event === "SIGNED_IN") {
+        console.log("User signed in");
+      }
+
+      if (event === "TOKEN_REFRESHED") {
+        console.log("Token refreshed successfully");
+      }
+
+      if (event === "SIGNED_OUT") {
+        setSession(null);
+        setUser(null);
+      }
+
+      if (event === "USER_UPDATED") {
+        if (session) fetchUserProfile(session.user.id, session.user.email!);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const refreshSession = async () => {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error) {
+      console.error("Refresh session error:", error);
+      // If refresh fails and it's an invalid refresh token, sign out
+      if (
+        error.message.includes("refresh_token_not_found") ||
+        error.message.includes("invalid refresh token")
+      ) {
+        await signOut();
+      }
+    } else {
+      setSession(data.session);
+    }
+  };
 
   const fetchUserProfile = async (id: string, email: string) => {
     try {
@@ -78,7 +114,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider
+      value={{ user, session, loading, signOut, refreshSession }}
+    >
       {children}
     </AuthContext.Provider>
   );
