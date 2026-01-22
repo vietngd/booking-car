@@ -14,7 +14,7 @@ export const LoginPage: React.FC = () => {
 
   // If already logged in, redirect
   if (user && session) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/overview" replace />;
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -31,7 +31,7 @@ export const LoginPage: React.FC = () => {
       if (error) {
         setError(error.message);
       } else {
-        navigate("/dashboard");
+        navigate("/overview");
       }
     } catch (err) {
       setError("Đã có lỗi xảy ra. Vui lòng thử lại sau.");
@@ -47,7 +47,7 @@ export const LoginPage: React.FC = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/overview`,
         },
       });
       if (error) throw error;

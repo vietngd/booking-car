@@ -8,6 +8,8 @@ import {
   User as UserIcon,
   CheckSquare,
   ChevronRight,
+  Truck,
+  BarChart3,
 } from "lucide-react";
 import { NotificationList } from "../common/NotificationList";
 import { clsx, type ClassValue } from "clsx";
@@ -29,7 +31,13 @@ export const MainLayout: React.FC = () => {
 
   const navItems = [
     {
-      label: "Dashboard",
+      label: "Tổng quan",
+      icon: BarChart3,
+      path: "/overview",
+      roles: ["staff", "manager_viet", "manager_korea", "admin"],
+    },
+    {
+      label: "Đặt xe",
       icon: LayoutDashboard,
       path: "/dashboard",
       roles: ["staff", "manager_viet", "manager_korea", "admin"],
@@ -38,6 +46,12 @@ export const MainLayout: React.FC = () => {
       label: "Quản lý đơn",
       icon: CheckSquare,
       path: "/admin/bookings",
+      roles: ["admin"],
+    },
+    {
+      label: "Quản lý xe",
+      icon: Truck,
+      path: "/admin/vehicles",
       roles: ["admin"],
     },
     {
@@ -134,9 +148,9 @@ export const MainLayout: React.FC = () => {
             {activeItem?.label || "Book Xe Online"}
           </h1>
 
-        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
             <NotificationList />
-            
+
             {/* Mobile Sidebar Trigger (Optional) */}
             <div className="lg:hidden">
               <Car className="h-6 w-6 text-blue-600" />

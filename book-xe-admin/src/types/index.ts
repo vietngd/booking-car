@@ -23,6 +23,7 @@ export type BookingStatus =
 export interface Booking {
   id: string;
   vehicle_type: string;
+  vehicle_id?: string;
   travel_time: string;
   reason: string;
   status: BookingStatus;
@@ -36,6 +37,8 @@ export interface Booking {
   driver_info?: string;
 
   // Approval flow
+  approver_viet_id?: string;
+  approver_korea_id?: string;
   viet_approval_status?: 'pending' | 'approved' | 'rejected';
   korea_approval_status?: 'pending' | 'approved' | 'rejected';
   admin_approval_status?: 'pending' | 'approved' | 'rejected';
@@ -46,7 +49,27 @@ export interface Booking {
   
   created_by: string;
   created_at: string;
+  updated_at?: string;
   
   // Join fields (optional)
   creator_email?: string;
+  vehicle?: Vehicle;
+}
+
+export type VehicleStatus = 'available' | 'in_use' | 'maintenance' | 'retired';
+
+export interface Vehicle {
+  id: string;
+  license_plate: string;
+  vehicle_name: string;
+  vehicle_type: string;
+  capacity?: string;
+  status: VehicleStatus;
+  driver_name?: string;
+  driver_phone?: string;
+  last_maintenance_date?: string;
+  next_maintenance_date?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
 }
