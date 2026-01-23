@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -71,6 +71,38 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
   const { addNotification } = useNotification();
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [dynamicVehicleOptions, setDynamicVehicleOptions] =
+    useState<{ label: string; value: string }[]>(vehicleOptions);
+
+  useEffect(() => {
+    fetchVehicleTypes();
+  }, []);
+
+  const fetchVehicleTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("vehicles")
+        .select("*")
+        .neq("status", "retired");
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setVehicles(data);
+        const options = data.map((v) => ({
+          label: `${v.vehicle_name} (${v.license_plate})`,
+          value: v.id,
+        }));
+
+        options.push({ label: "Khác", value: "Khác" });
+
+        setDynamicVehicleOptions(options);
+      }
+    } catch (err) {
+      console.error("Error fetching vehicles:", err);
+    }
+  };
 
   const {
     register,
@@ -97,11 +129,24 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
     setGeneralError(null);
 
     try {
+      // Find selected vehicle info
+      const selectedVehicle = vehicles.find((v) => v.id === data.vehicle_type);
+      const vehicleTypeId = selectedVehicle ? selectedVehicle.id : null;
+      const vehicleTypeName = selectedVehicle
+        ? selectedVehicle.vehicle_name
+        : "Khác";
+      const driverInfo =
+        selectedVehicle && selectedVehicle.driver_name
+          ? `${selectedVehicle.driver_name}${selectedVehicle.driver_phone ? ` (${selectedVehicle.driver_phone})` : ""}`
+          : "";
+
       const { error } = await supabase.from("bookings").insert({
         created_by: user.id,
         requester_name: data.requester_name,
         requester_department: data.requester_department,
-        vehicle_type: data.vehicle_type,
+        vehicle_type: vehicleTypeName,
+        vehicle_id: vehicleTypeId,
+        driver_info: driverInfo,
         cargo_type: data.cargo_type,
         cargo_weight: data.cargo_weight,
         destination: data.destination,
@@ -114,7 +159,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
       if (error) throw error;
 
       reset();
-      
+
       toast({
         title: "Gửi yêu cầu thành công!",
         description: "Yêu cầu đặt xe của bạn đã được gửi và đang chờ duyệt.",
@@ -125,7 +170,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
         title: "Yêu cầu đặt xe mới",
         message: `Bạn đã tạo yêu cầu đặt xe đi ${data.destination}`,
         type: "success",
-        user_id: user.id
+        user_id: user.id,
       });
 
       // Notify Managers
@@ -133,7 +178,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
         title: "Yêu cầu đặt xe mới",
         message: `${data.requester_name} vừa tạo yêu cầu đi ${data.destination}`,
         type: "info",
-        target_role: "manager_viet"
+        target_role: "manager_viet",
       });
 
       if (onSuccess) {
@@ -190,7 +235,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
             label="Loại xe cần dùng"
             register={register}
             errors={errors}
-            options={vehicleOptions}
+            options={dynamicVehicleOptions}
             required
           />
           <RHFInput

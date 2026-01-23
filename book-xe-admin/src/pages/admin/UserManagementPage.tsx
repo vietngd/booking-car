@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../app/supabase";
-import { Loader2, User, Search } from "lucide-react";
+import { Loader2, User } from "lucide-react";
 import type { Role } from "../../types";
 
 interface UserProfile {
@@ -90,9 +90,7 @@ export const UserManagementPage: React.FC = () => {
       {/* Search and Filters */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
         <div className="relative max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-slate-400" />
-          </div>
+        
           <input
             type="text"
             className="input-field pl-10"
