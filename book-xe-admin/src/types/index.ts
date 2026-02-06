@@ -5,8 +5,10 @@ export interface User {
   email: string;
   role: Role;
   full_name?: string;
+  avatar_url?: string;
   user_metadata?: {
     full_name?: string;
+    avatar_url?: string;
   };
 }
 
