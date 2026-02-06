@@ -5,15 +5,19 @@ import { NotificationProvider } from "./app/notification-context";
 import { ConfirmDialogProvider } from "./components/common/ConfirmDialog";
 import { Toaster } from "@/components/ui/toaster";
 import { useEffect } from "react";
-import { requestNotificationPermission, onMessageListener } from "./lib/firebase";
+import {
+  requestNotificationPermission,
+  onMessageListener,
+} from "./lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 function App() {
   const { toast } = useToast();
 
   useEffect(() => {
     requestNotificationPermission();
-    
+
     onMessageListener((payload) => {
       // console.log("Message received: ", payload);
       toast({
@@ -29,6 +33,7 @@ function App() {
         <ConfirmDialogProvider>
           <RouterProvider router={router} />
           <Toaster />
+          <SpeedInsights />
         </ConfirmDialogProvider>
       </NotificationProvider>
     </AuthProvider>
