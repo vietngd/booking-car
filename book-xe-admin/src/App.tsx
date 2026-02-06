@@ -10,7 +10,7 @@ import {
   onMessageListener,
 } from "./lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function App() {
   const { toast } = useToast();

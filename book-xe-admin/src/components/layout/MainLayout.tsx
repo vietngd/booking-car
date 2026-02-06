@@ -10,6 +10,9 @@ import {
   ChevronRight,
   Truck,
   BarChart3,
+  Wrench,
+  Droplet,
+  List,
 } from "lucide-react";
 import { NotificationList } from "../common/NotificationList";
 import { clsx, type ClassValue } from "clsx";
@@ -52,6 +55,24 @@ export const MainLayout: React.FC = () => {
       label: "Quản lý xe",
       icon: Truck,
       path: "/admin/vehicles",
+      roles: ["admin"],
+    },
+    {
+      label: "Bảo trì & Sửa chữa",
+      icon: Wrench,
+      path: "/admin/maintenance",
+      roles: ["admin", "manager_viet", "manager_korea"],
+    },
+    {
+      label: "Quản lý Nhiên liệu",
+      icon: Droplet,
+      path: "/admin/fuel",
+      roles: ["admin", "manager_viet", "manager_korea"],
+    },
+    {
+      label: "Quản lý Danh mục",
+      icon: List,
+      path: "/admin/master-data",
       roles: ["admin"],
     },
     {

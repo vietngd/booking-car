@@ -6,6 +6,9 @@ import { OverviewPage } from "../pages/dashboard/OverviewPage";
 import { AllBookingsPage } from "../pages/admin/AllBookingsPage";
 import { UserManagementPage } from "../pages/admin/UserManagementPage";
 import { VehicleManagementPage } from "../pages/admin/VehicleManagementPage";
+import { MaintenancePage } from "../pages/admin/MaintenancePage";
+import { FuelPage } from "../pages/admin/FuelPage";
+import { MasterDataPage } from "../pages/admin/MasterDataPage";
 import { MainLayout } from "../components/layout/MainLayout";
 import { ProtectedRoute } from "./protected-route";
 
@@ -32,6 +35,7 @@ export const router = createBrowserRouter([
             path: "/dashboard",
             element: <DashboardPage />,
           },
+
           {
             element: <ProtectedRoute allowedRoles={["admin"]} />, // Admin only
             children: [
@@ -47,6 +51,18 @@ export const router = createBrowserRouter([
                 path: "/admin/vehicles",
                 element: <VehicleManagementPage />,
               },
+              {
+                path: "/admin/maintenance",
+                element: <MaintenancePage />,
+              },
+              {
+                path: "/admin/fuel",
+                element: <FuelPage />,
+              },
+              {
+                path: "/admin/master-data",
+                element: <MasterDataPage />,
+              },
             ],
           },
           {
@@ -57,6 +73,7 @@ export const router = createBrowserRouter([
       },
     ],
   },
+
   {
     path: "*",
     element: <Navigate to="/overview" replace />,

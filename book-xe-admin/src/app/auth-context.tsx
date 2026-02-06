@@ -91,8 +91,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         .single();
 
       if (error) {
-        // If user document doesn't exist yet, we might want to handle it (e.g., first login)
-        // For now, assume it's created via RLS or trigger, or manually for first user.
         console.error("Error fetching user profile:", error);
         setUser({ id, email, role: "staff" }); // Default to staff
       } else {

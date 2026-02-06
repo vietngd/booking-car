@@ -10,6 +10,7 @@ export interface User {
   };
 }
 
+
 export type BookingStatus = 
   | 'pending' 
   | 'pending_viet' 
@@ -70,6 +71,47 @@ export interface Vehicle {
   last_maintenance_date?: string;
   next_maintenance_date?: string;
   notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaintenanceRecord {
+  id: string;
+  vehicle_id: string;
+  service_date: string;
+  service_type: string;
+  cost: number;
+  garage_name?: string;
+  description?: string;
+  mileage_at_service?: number;
+  performed_by?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  vehicle?: Vehicle; // For join queries
+}
+
+export interface FuelLog {
+  id: string;
+  vehicle_id: string;
+  fill_date: string;
+  liters: number;
+  cost: number;
+  current_mileage?: number;
+  filled_by?: string;
+  notes?: string;
+  created_at: string;
+  vehicle?: Vehicle; // For join queries
+}
+
+export interface MasterData {
+  id: string;
+  type: string; // 'department' | 'cargo_type' | 'cargo_weight'
+  label: string;
+  value: string;
+  description?: string;
+  is_active: boolean;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }

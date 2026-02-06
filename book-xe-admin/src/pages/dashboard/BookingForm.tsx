@@ -24,44 +24,6 @@ const bookingSchema = z.object({
 
 type BookingFormData = z.infer<typeof bookingSchema>;
 
-const vehicleOptions = [
-  { label: "Xe tải nhỏ (500kg - 1 tấn)", value: "Xe tải nhỏ" },
-  { label: "Xe tải trung (1.5 - 2.5 tấn)", value: "Xe tải trung" },
-  { label: "Xe bán tải", value: "Xe bán tải" },
-  { label: "Xe nâng", value: "Xe nâng" },
-  { label: "Xe cẩu", value: "Xe cẩu" },
-  { label: "Khác", value: "Khác" },
-];
-
-const departmentOptions = [
-  { label: "Kho (Warehouse)", value: "Kho" },
-  { label: "Sản xuất (Production)", value: "Sản xuất" },
-  { label: "Kế toán (Accounting)", value: "Kế toán" },
-  { label: "Nhân sự (HR)", value: "Nhân sự" },
-  { label: "Sales / Marketing", value: "Sales" },
-  { label: "Kỹ thuật (Engineering)", value: "Kỹ thuật" },
-  { label: "IT", value: "IT" },
-  { label: "Bảo vệ (Security)", value: "Bảo vệ" },
-  { label: "Khác", value: "Khác" },
-];
-
-const cargoTypeOptions = [
-  { label: "Nguyên vật liệu", value: "Nguyên vật liệu" },
-  { label: "Thành phẩm", value: "Thành phẩm" },
-  { label: "Máy móc / Thiết bị", value: "Máy móc / Thiết bị" },
-  { label: "Phế liệu", value: "Phế liệu" },
-  { label: "Văn phòng phẩm / Đồ dùng", value: "Văn phòng phẩm / Đồ dùng" },
-  { label: "Khác", value: "Khác" },
-];
-
-const cargoWeightOptions = [
-  { label: "Dưới 100kg", value: "Dưới 100kg" },
-  { label: "100kg - 500kg", value: "100kg - 500kg" },
-  { label: "500kg - 1 tấn", value: "500kg - 1 tấn" },
-  { label: "1 tấn - 2 tấn", value: "1 tấn - 2 tấn" },
-  { label: "Trên 2 tấn", value: "Trên 2 tấn" },
-];
-
 export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
   onSuccess,
 }) => {
@@ -71,36 +33,70 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
   const { addNotification } = useNotification();
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
+
+  // Data for selects
   const [vehicles, setVehicles] = useState<any[]>([]);
-  const [dynamicVehicleOptions, setDynamicVehicleOptions] =
-    useState<{ label: string; value: string }[]>(vehicleOptions);
+  const [vehicleOptions, setVehicleOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [departmentOptions, setDepartmentOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [cargoTypeOptions, setCargoTypeOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [cargoWeightOptions, setCargoWeightOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
 
   useEffect(() => {
-    fetchVehicleTypes();
+    fetchInitialData();
   }, []);
 
-  const fetchVehicleTypes = async () => {
+  const fetchInitialData = async () => {
     try {
-      const { data, error } = await supabase
-        .from("vehicles")
-        .select("*")
-        .neq("status", "retired");
+      // Parallel fetching
+      const [vehiclesRes, masterDataRes] = await Promise.all([
+        supabase.from("vehicles").select("*").neq("status", "retired"),
+        supabase
+          .from("master_data")
+          .select("*")
+          .eq("is_active", true)
+          .order("sort_order"),
+      ]);
 
-      if (error) throw error;
+      // Handle Vehicles
+      if (vehiclesRes.error) throw vehiclesRes.error;
+      const vehicleData = vehiclesRes.data || [];
+      setVehicles(vehicleData);
+      const vOptions = vehicleData.map((v) => ({
+        label: `${v.vehicle_name} (${v.license_plate})`,
+        value: v.id,
+      }));
+      vOptions.push({ label: "Khác", value: "Khác" });
+      setVehicleOptions(vOptions);
 
-      if (data && data.length > 0) {
-        setVehicles(data);
-        const options = data.map((v) => ({
-          label: `${v.vehicle_name} (${v.license_plate})`,
-          value: v.id,
-        }));
+      // Handle Master Data
+      if (masterDataRes.error) throw masterDataRes.error;
+      const md = masterDataRes.data || [];
 
-        options.push({ label: "Khác", value: "Khác" });
-
-        setDynamicVehicleOptions(options);
-      }
+      setDepartmentOptions(
+        md
+          .filter((m) => m.type === "department")
+          .map((m) => ({ label: m.label, value: m.value })),
+      );
+      setCargoTypeOptions(
+        md
+          .filter((m) => m.type === "cargo_type")
+          .map((m) => ({ label: m.label, value: m.value })),
+      );
+      setCargoWeightOptions(
+        md
+          .filter((m) => m.type === "cargo_weight")
+          .map((m) => ({ label: m.label, value: m.value })),
+      );
     } catch (err) {
-      console.error("Error fetching vehicles:", err);
+      console.error("Error fetching initial data:", err);
     }
   };
 
@@ -108,12 +104,13 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
-      requester_name: "",
-      requester_department: "",
+      requester_name: user?.user_metadata?.full_name || "", // Pre-fill name/dept if available
+      requester_department: (user?.user_metadata as any)?.department || "",
       vehicle_type: "",
       cargo_type: "",
       cargo_weight: "",
@@ -122,6 +119,16 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
       reason: "",
     },
   });
+
+  // Effect to update default values if user data loads late (optional, but good UX)
+  useEffect(() => {
+    if (user && user.user_metadata && user.user_metadata.full_name) {
+      setValue("requester_name", user.user_metadata.full_name);
+    }
+    if (user && (user.user_metadata as any)?.department) {
+      setValue("requester_department", (user.user_metadata as any).department);
+    }
+  }, [user, setValue]);
 
   const onSubmit = async (data: BookingFormData) => {
     if (!user) return;
@@ -208,6 +215,8 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
         </div>
       )}
 
+      {/* Loading state for form initialization could be added here if critical */}
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <RHFInput
@@ -235,7 +244,7 @@ export const BookingForm: React.FC<{ onSuccess?: () => void }> = ({
             label="Loại xe cần dùng"
             register={register}
             errors={errors}
-            options={dynamicVehicleOptions}
+            options={vehicleOptions}
             required
           />
           <RHFInput
