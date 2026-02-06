@@ -11,6 +11,9 @@ import { FuelPage } from "../pages/admin/FuelPage";
 import { MasterDataPage } from "../pages/admin/MasterDataPage";
 import { MainLayout } from "../components/layout/MainLayout";
 import { ProtectedRoute } from "./protected-route";
+import { ReportsPage } from "../pages/admin/ReportsPage";
+import { SchedulePage } from "../pages/admin/SchedulePage";
+import { AlertsPage } from "../pages/admin/AlertsPage";
 
 export const router = createBrowserRouter([
   {
@@ -39,6 +42,18 @@ export const router = createBrowserRouter([
           {
             element: <ProtectedRoute allowedRoles={["admin"]} />, // Admin only
             children: [
+              {
+                path: "/admin/reports",
+                element: <ReportsPage />,
+              },
+              {
+                path: "/admin/schedule",
+                element: <SchedulePage />,
+              },
+              {
+                path: "/admin/alerts",
+                element: <AlertsPage />,
+              },
               {
                 path: "/admin/bookings",
                 element: <AllBookingsPage />,

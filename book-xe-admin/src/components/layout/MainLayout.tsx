@@ -13,6 +13,9 @@ import {
   Wrench,
   Droplet,
   List,
+  PieChart,
+  Calendar,
+  Bell,
 } from "lucide-react";
 import { NotificationList } from "../common/NotificationList";
 import { clsx, type ClassValue } from "clsx";
@@ -80,6 +83,24 @@ export const MainLayout: React.FC = () => {
       icon: UserIcon,
       path: "/admin/users",
       roles: ["admin"],
+    },
+    {
+      label: "Báo cáo & Thống kê",
+      icon: PieChart,
+      path: "/admin/reports",
+      roles: ["admin", "manager_viet", "manager_korea"],
+    },
+    {
+      label: "Lịch xe",
+      icon: Calendar,
+      path: "/admin/schedule",
+      roles: ["admin", "manager_viet", "manager_korea", "staff"],
+    },
+    {
+      label: "Cảnh báo",
+      icon: Bell,
+      path: "/admin/alerts",
+      roles: ["admin", "manager_viet", "manager_korea"],
     },
   ];
 
