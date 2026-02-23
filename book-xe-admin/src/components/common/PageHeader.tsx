@@ -21,7 +21,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             <div className="text-white">{icon}</div>
           </div>
         )}
-        <div>
+        <div className="py-2">
           <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
           {description && (
             <p className="text-slate-500 text-sm mt-0.5">{description}</p>

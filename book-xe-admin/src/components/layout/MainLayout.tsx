@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../app/auth-context";
+import { useAutoCancel } from "../../hooks/useAutoCancel";
 import {
   Car,
   LayoutDashboard,
@@ -38,6 +39,9 @@ export const MainLayout: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Auto-cancel expired bookings that are still pending
+  useAutoCancel();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -250,7 +254,7 @@ export const MainLayout: React.FC = () => {
               <Menu className="h-5 w-5" />
             </button>
 
-            <div>
+            <div className="py-2">
               <h1 className="text-base font-bold text-slate-900">
                 {activeItem?.label || "Book Xe Online"}
               </h1>
