@@ -2,21 +2,22 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../../app/auth-context";
 import { supabase } from "../../app/supabase";
 import {
-  TrendingUp,
   Clock,
   CheckCircle,
   XCircle,
   Calendar,
+  Car,
+  Wrench,
+  BarChart3,
+  Activity,
 } from "lucide-react";
 import type { Booking } from "../../types";
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -24,6 +25,10 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { PageHeader } from "../../components/common/PageHeader";
+import { StatCard } from "../../components/common/StatCard";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import { BookingStatusBadge } from "../../components/common/BookingStatusBadge";
 
 interface DashboardStats {
   totalBookings: number;
@@ -43,6 +48,29 @@ interface ChartData {
   name: string;
   bookings: number;
 }
+
+const PIE_COLORS = ["#F59E0B", "#10B981", "#EF4444", "#3B82F6", "#8B5CF6"];
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-3 text-sm">
+        <p className="font-semibold text-slate-700 mb-1">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex items-center gap-2">
+            <div
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: entry.color }}
+            />
+            <span className="text-slate-500">{entry.name}:</span>
+            <span className="font-bold text-slate-800">{entry.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 export const OverviewPage: React.FC = () => {
   const { user } = useAuth();
@@ -68,15 +96,11 @@ export const OverviewPage: React.FC = () => {
   const [chartData, setChartData] = useState<ChartData[]>([]);
 
   useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-    }
+    if (user) fetchDashboardData();
   }, [user]);
 
   useEffect(() => {
-    if (allBookings.length > 0) {
-      processChartData();
-    }
+    if (allBookings.length > 0) processChartData();
   }, [allBookings, chartRange]);
 
   const processChartData = () => {
@@ -84,14 +108,9 @@ export const OverviewPage: React.FC = () => {
     let data: ChartData[] = [];
 
     if (chartRange === "week") {
-      // Last 7 days
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(d.getDate() - i);
-        const dateStr = d.toLocaleDateString("vi-VN", {
-          weekday: "short",
-          day: "numeric",
-        });
         const count = allBookings.filter((b) => {
           const bDate = new Date(b.created_at);
           return (
@@ -100,10 +119,15 @@ export const OverviewPage: React.FC = () => {
             bDate.getFullYear() === d.getFullYear()
           );
         }).length;
-        data.push({ name: dateStr, bookings: count });
+        data.push({
+          name: d.toLocaleDateString("vi-VN", {
+            weekday: "short",
+            day: "numeric",
+          }),
+          bookings: count,
+        });
       }
     } else if (chartRange === "month") {
-      // Current month by day
       const daysInMonth = new Date(
         now.getFullYear(),
         now.getMonth() + 1,
@@ -118,15 +142,15 @@ export const OverviewPage: React.FC = () => {
             bDate.getFullYear() === now.getFullYear()
           );
         }).length;
-        if (i % 2 !== 0 || i === daysInMonth) {
-          // Show every 2 days to avoid crowding
-          data.push({ name: `${i}/${now.getMonth() + 1}`, bookings: count });
-        } else {
-          data.push({ name: ``, bookings: count }); // Empty label for spacing
-        }
+        data.push({
+          name:
+            i % 3 === 1 || i === daysInMonth
+              ? `${i}/${now.getMonth() + 1}`
+              : "",
+          bookings: count,
+        });
       }
-    } else if (chartRange === "year") {
-      // Current year by month
+    } else {
       const monthNames = [
         "Th1",
         "Th2",
@@ -151,44 +175,30 @@ export const OverviewPage: React.FC = () => {
         data.push({ name: monthNames[i], bookings: count });
       }
     }
-
     setChartData(data);
   };
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch bookings
       let bookingsQuery = supabase.from("bookings").select("*");
-
-      // If staff, only show their bookings
       if (user?.role === "staff") {
         bookingsQuery = bookingsQuery.eq("created_by", user.id);
       }
+      const { data: bookings } = await bookingsQuery;
+      const { data: vehicles } = await supabase.from("vehicles").select("*");
 
-      const { data: bookings, error: bookingsError } = await bookingsQuery;
-
-      if (bookingsError) throw bookingsError;
-
-      // Fetch vehicles
-      const { data: vehicles, error: vehiclesError } = await supabase
-        .from("vehicles")
-        .select("*");
-
-      if (vehiclesError) throw vehiclesError;
-
-      // Calculate stats
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const firstDayOfYear = new Date(now.getFullYear(), 0, 1);
+      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const firstOfYear = new Date(now.getFullYear(), 0, 1);
 
-      const bookingsData = bookings || [];
-      const vehiclesData = vehicles || [];
+      const bData = bookings || [];
+      const vData = vehicles || [];
 
       setStats({
-        totalBookings: bookingsData.length,
-        pendingBookings: bookingsData.filter((b) =>
+        totalBookings: bData.length,
+        pendingBookings: bData.filter((b) =>
           [
             "pending",
             "pending_viet",
@@ -196,38 +206,33 @@ export const OverviewPage: React.FC = () => {
             "pending_admin",
           ].includes(b.status),
         ).length,
-        approvedBookings: bookingsData.filter((b) => b.status === "approved")
+        approvedBookings: bData.filter((b) => b.status === "approved").length,
+        rejectedBookings: bData.filter((b) => b.status === "rejected").length,
+        totalVehicles: vData.length,
+        availableVehicles: vData.filter((v) => v.status === "available").length,
+        inUseVehicles: vData.filter((v) => v.status === "in_use").length,
+        maintenanceVehicles: vData.filter((v) => v.status === "maintenance")
           .length,
-        rejectedBookings: bookingsData.filter((b) => b.status === "rejected")
+        todayBookings: bData.filter((b) => new Date(b.created_at) >= today)
           .length,
-        totalVehicles: vehiclesData.length,
-        availableVehicles: vehiclesData.filter((v) => v.status === "available")
-          .length,
-        inUseVehicles: vehiclesData.filter((v) => v.status === "in_use").length,
-        maintenanceVehicles: vehiclesData.filter(
-          (v) => v.status === "maintenance",
+        thisMonthBookings: bData.filter(
+          (b) => new Date(b.created_at) >= firstOfMonth,
         ).length,
-        todayBookings: bookingsData.filter(
-          (b) => new Date(b.created_at) >= today,
-        ).length,
-        thisMonthBookings: bookingsData.filter(
-          (b) => new Date(b.created_at) >= firstDayOfMonth,
-        ).length,
-        thisYearBookings: bookingsData.filter(
-          (b) => new Date(b.created_at) >= firstDayOfYear,
+        thisYearBookings: bData.filter(
+          (b) => new Date(b.created_at) >= firstOfYear,
         ).length,
       });
 
-      setAllBookings(bookingsData);
-
-      // Get recent bookings (last 5)
-      const recent = bookingsData
-        .sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-        )
-        .slice(0, 5);
-      setRecentBookings(recent);
+      setAllBookings(bData);
+      setRecentBookings(
+        [...bData]
+          .sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          )
+          .slice(0, 6),
+      );
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
     } finally {
@@ -235,219 +240,201 @@ export const OverviewPage: React.FC = () => {
     }
   };
 
-  const StatCard: React.FC<{
-    title: string;
-    value: number;
-    icon: React.ReactNode;
-    color: string;
-    bgColor: string;
-  }> = ({ title, value, icon, color, bgColor }) => (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="text-3xl font-bold text-slate-900 mt-2">{value}</p>
-        </div>
-        <div className={`${bgColor} ${color} p-4 rounded-xl`}>{icon}</div>
-      </div>
-    </div>
-  );
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; className: string }> = {
-      pending: {
-        label: "Chờ duyệt",
-        className: "bg-yellow-50 text-yellow-700 border-yellow-200",
-      },
-      pending_viet: {
-        label: "Chờ sếp Việt duyệt",
-        className: "bg-yellow-50 text-yellow-700 border-yellow-200",
-      },
-      pending_korea: {
-        label: "Chờ sếp Hàn duyệt",
-        className: "bg-orange-50 text-orange-700 border-orange-200",
-      },
-      pending_admin: {
-        label: "Chờ hành chính Admin duyệt",
-        className: "bg-purple-50 text-purple-700 border-purple-200",
-      },
-      approved: {
-        label: "Đã duyệt",
-        className: "bg-green-50 text-green-700 border-green-200",
-      },
-      rejected: {
-        label: "Từ chối",
-        className: "bg-red-50 text-red-700 border-red-200",
-      },
-      completed: {
-        label: "Hoàn thành",
-        className: "bg-blue-50 text-blue-700 border-blue-200",
-      },
-      cancelled: {
-        label: "Đã hủy",
-        className: "bg-slate-50 text-slate-700 border-slate-200",
-      },
-    };
-
-    const config = statusConfig[status] || statusConfig.pending;
-    return (
-      <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${config.className}`}
-      >
-        {config.label}
-      </span>
-    );
-  };
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <LoadingSpinner fullPage text="Đang tải dữ liệu tổng quan..." />;
   }
+
+  const approvalRate =
+    stats.totalBookings > 0
+      ? Math.round((stats.approvedBookings / stats.totalBookings) * 100)
+      : 0;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
+      <PageHeader
+        title="Tổng quan Dashboard"
+        description="Xem tổng quan về hệ thống đặt xe và quản lý phương tiện"
+        icon={<BarChart3 className="h-6 w-6" />}
+      />
+
+      {/* Booking Stats */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Tổng quan Dashboard
-        </h1>
-        <p className="text-slate-500">
-          Xem tổng quan về hệ thống đặt xe và quản lý phương tiện
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+          Thống kê đặt xe
         </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard
+            title="Tổng đặt xe"
+            value={stats.totalBookings}
+            icon={<Calendar className="h-5 w-5" />}
+            color="blue"
+          />
+          <StatCard
+            title="Chờ duyệt"
+            value={stats.pendingBookings}
+            icon={<Clock className="h-5 w-5" />}
+            color="yellow"
+          />
+          <StatCard
+            title="Đã duyệt"
+            value={stats.approvedBookings}
+            icon={<CheckCircle className="h-5 w-5" />}
+            color="green"
+          />
+          <StatCard
+            title="Từ chối"
+            value={stats.rejectedBookings}
+            icon={<XCircle className="h-5 w-5" />}
+            color="red"
+          />
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Tổng đặt xe"
-          value={stats.totalBookings}
-          icon={<Calendar className="h-6 w-6" />}
-          color="text-blue-600"
-          bgColor="bg-blue-50"
-        />
-        <StatCard
-          title="Chờ duyệt"
-          value={stats.pendingBookings}
-          icon={<Clock className="h-6 w-6" />}
-          color="text-yellow-600"
-          bgColor="bg-yellow-50"
-        />
-        <StatCard
-          title="Đã duyệt"
-          value={stats.approvedBookings}
-          icon={<CheckCircle className="h-6 w-6" />}
-          color="text-green-600"
-          bgColor="bg-green-50"
-        />
-        <StatCard
-          title="Từ chối"
-          value={stats.rejectedBookings}
-          icon={<XCircle className="h-6 w-6" />}
-          color="text-red-600"
-          bgColor="bg-red-50"
-        />
-      </div>
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {" "}
-        {/* Vehicle Status Chart */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">
-            Thống kê trạng thái phương tiện
-          </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={[
-                { name: "Sẵn sàng", value: stats.availableVehicles },
-                { name: "Đang dùng", value: stats.inUseVehicles },
-                { name: "Bảo trì", value: stats.maintenanceVehicles },
-              ]}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="value" fill="#576e92ff" name="Số lượng" />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Vehicle Stats */}
+      <div>
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+          Thống kê phương tiện
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard
+            title="Tổng phương tiện"
+            value={stats.totalVehicles}
+            icon={<Car className="h-5 w-5" />}
+            color="indigo"
+          />
+          <StatCard
+            title="Sẵn sàng"
+            value={stats.availableVehicles}
+            icon={<CheckCircle className="h-5 w-5" />}
+            color="green"
+          />
+          <StatCard
+            title="Đang sử dụng"
+            value={stats.inUseVehicles}
+            icon={<Activity className="h-5 w-5" />}
+            color="blue"
+          />
+          <StatCard
+            title="Đang bảo trì"
+            value={stats.maintenanceVehicles}
+            icon={<Wrench className="h-5 w-5" />}
+            color="orange"
+          />
         </div>
-        {/* Booking Status Chart */}
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Vehicle PieChart */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">
-            Thống kê trạng thái đặt xe
-          </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={[
-                  {
-                    name: "Chờ duyệt",
-                    value: stats.pendingBookings,
-                    color: "#f59e0b",
-                  },
-                  {
-                    name: "Đã duyệt",
-                    value: stats.approvedBookings,
-                    color: "#10b981",
-                  },
-                  {
-                    name: "Từ chối",
-                    value: stats.rejectedBookings,
-                    color: "#ef4444",
-                  },
-                ]}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) =>
-                  `${name}: ${((percent || 0) * 100).toFixed(0)}%`
-                }
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
+          <h3 className="text-sm font-bold text-slate-900 mb-4">
+            Phân bổ phương tiện
+          </h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: "Sẵn sàng", value: stats.availableVehicles },
+                    { name: "Đang dùng", value: stats.inUseVehicles },
+                    { name: "Bảo trì", value: stats.maintenanceVehicles },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={45}
+                  outerRadius={70}
+                  paddingAngle={4}
+                  dataKey="value"
+                >
+                  {[0, 1, 2].map((index) => (
+                    <Cell key={index} fill={PIE_COLORS[index]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "10px",
+                    border: "1px solid #f1f5f9",
+                    fontSize: "12px",
+                  }}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: "11px" }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <h3 className="text-sm font-bold text-slate-900 mb-4">
+            Thống kê nhanh
+          </h3>
+          <div className="grid grid-cols-2 gap-3 h-48">
+            {[
+              {
+                label: "Hôm nay",
+                value: stats.todayBookings,
+                color: "blue",
+                icon: "📅",
+              },
+              {
+                label: "Tháng này",
+                value: stats.thisMonthBookings,
+                color: "purple",
+                icon: "📊",
+              },
+              {
+                label: "Năm nay",
+                value: stats.thisYearBookings,
+                color: "indigo",
+                icon: "🗓️",
+              },
+              {
+                label: "Tỷ lệ duyệt",
+                value: `${approvalRate}%`,
+                color: "green",
+                icon: "✅",
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="flex flex-col justify-between p-4 bg-slate-50 rounded-xl border border-slate-100"
               >
-                {[
-                  {
-                    name: "Chờ duyệt",
-                    value: stats.pendingBookings,
-                    color: "#f59e0b",
-                  },
-                  {
-                    name: "Đã duyệt",
-                    value: stats.approvedBookings,
-                    color: "#10b981",
-                  },
-                  {
-                    name: "Từ chối",
-                    value: stats.rejectedBookings,
-                    color: "#ef4444",
-                  },
-                ].map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+                <div className="text-xl">{item.icon}</div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {item.label}
+                  </p>
+                  <p className="text-2xl font-extrabold text-slate-900 mt-0.5">
+                    {item.value}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Booking Trend Chart */}
+      {/* Trend Chart */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Xu hướng đặt xe
-          </h2>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">
+              Xu hướng đặt xe
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Biểu đồ số lượng đơn đặt xe theo thời gian
+            </p>
+          </div>
           <div className="flex bg-slate-100 p-1 rounded-xl">
             {(["week", "month", "year"] as const).map((range) => (
               <button
                 key={range}
                 onClick={() => setChartRange(range)}
-                className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                   chartRange === range
                     ? "bg-white text-blue-600 shadow-sm"
                     : "text-slate-500 hover:text-slate-700"
@@ -462,102 +449,88 @@ export const OverviewPage: React.FC = () => {
             ))}
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="bookings"
-              stroke="#8b5cf6"
-              strokeWidth={2}
-              name="Số lượng đặt xe"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="gradBookings" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="#F1F5F9"
+              />
+              <XAxis
+                dataKey="name"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 11 }}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 11 }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="bookings"
+                name="Số đặt xe"
+                stroke="#3B82F6"
+                strokeWidth={2.5}
+                fill="url(#gradBookings)"
+                dot={{ fill: "#3B82F6", r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Bookings */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">
-            Đặt xe gần đây
-          </h2>
-          <div className="space-y-3">
-            {recentBookings.length === 0 ? (
-              <p className="text-slate-500 text-sm text-center py-8">
-                Chưa có đặt xe nào
-              </p>
-            ) : (
-              recentBookings.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-900">
-                      {booking.vehicle_type}
+
+      {/* Recent Bookings */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-sm font-bold text-slate-900">Đặt xe gần đây</h3>
+          <span className="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded-full">
+            {recentBookings.length} đơn mới nhất
+          </span>
+        </div>
+        {recentBookings.length === 0 ? (
+          <p className="text-slate-400 text-sm text-center py-8">
+            Chưa có đặt xe nào
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {recentBookings.map((booking) => (
+              <div
+                key={booking.id}
+                className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100"
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center flex-none">
+                    <Car className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">
+                      {booking.requester_name ||
+                        booking.vehicle_type ||
+                        "Đặt xe"}
                     </p>
-                    <p className="text-xs text-slate-500">
-                      {new Date(booking.travel_time).toLocaleString("vi-VN")}
+                    <p className="text-xs text-slate-500 truncate">
+                      {new Date(
+                        booking.travel_time || booking.created_at,
+                      ).toLocaleString("vi-VN")}
                     </p>
                   </div>
-                  <div>{getStatusBadge(booking.status)}</div>
                 </div>
-              ))
-            )}
+                <BookingStatusBadge status={booking.status} />
+              </div>
+            ))}
           </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">
-            Thống kê nhanh
-          </h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-blue-600" />
-                <span className="text-sm font-medium text-slate-700">
-                  Hôm nay
-                </span>
-              </div>
-              <span className="text-lg font-bold text-blue-600">
-                {stats.todayBookings}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
-                <span className="text-sm font-medium text-slate-700">
-                  Tháng này
-                </span>
-              </div>
-              <span className="text-lg font-bold text-purple-600">
-                {stats.thisMonthBookings}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <span className="text-sm font-medium text-slate-700">
-                  Tỷ lệ duyệt
-                </span>
-              </div>
-              <span className="text-lg font-bold text-green-600">
-                {stats.totalBookings > 0
-                  ? Math.round(
-                      (stats.approvedBookings / stats.totalBookings) * 100,
-                    )
-                  : 0}
-                %
-              </span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

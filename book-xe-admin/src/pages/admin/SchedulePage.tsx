@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "../../app/supabase";
 import {
-  Loader2,
   ChevronLeft,
   ChevronRight,
   MapPin,
   Calendar as CalendarIcon,
+  RefreshCw,
+  Car,
 } from "lucide-react";
 import {
   format,
@@ -19,6 +20,47 @@ import {
 } from "date-fns";
 import { vi } from "date-fns/locale";
 import type { Booking } from "../../types";
+import { PageHeader } from "../../components/common/PageHeader";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+
+
+const BOOKING_COLORS = [
+  {
+    bg: "bg-blue-50",
+    border: "border-blue-400",
+    text: "text-blue-800",
+    sub: "text-blue-600",
+    bar: "border-blue-500",
+  },
+  {
+    bg: "bg-violet-50",
+    border: "border-violet-400",
+    text: "text-violet-800",
+    sub: "text-violet-600",
+    bar: "border-violet-500",
+  },
+  {
+    bg: "bg-emerald-50",
+    border: "border-emerald-400",
+    text: "text-emerald-800",
+    sub: "text-emerald-600",
+    bar: "border-emerald-500",
+  },
+  {
+    bg: "bg-amber-50",
+    border: "border-amber-400",
+    text: "text-amber-800",
+    sub: "text-amber-600",
+    bar: "border-amber-500",
+  },
+  {
+    bg: "bg-rose-50",
+    border: "border-rose-400",
+    text: "text-rose-800",
+    sub: "text-rose-600",
+    bar: "border-rose-500",
+  },
+];
 
 export const SchedulePage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -26,26 +68,33 @@ export const SchedulePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Time range config (6:00 AM to 22:00 PM)
   const START_HOUR = 6;
   const END_HOUR = 22;
   const HOURS = Array.from(
     { length: END_HOUR - START_HOUR + 1 },
     (_, i) => START_HOUR + i,
   );
-  const PIXELS_PER_HOUR = 60; // 1px = 1min height
+  const PIXELS_PER_HOUR = 64;
 
-  // Calculate week range
   const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startDate, i));
 
   useEffect(() => {
     fetchBookings();
-    // Scroll to current time roughly on load if today is in view
-    if (scrollContainerRef.current) {
-      // scrollContainerRef.current.scrollTop = 300; // Optional auto-scroll
-    }
   }, [currentDate]);
+
+  // Auto-scroll to current time on load
+  useEffect(() => {
+    if (!loading && scrollContainerRef.current) {
+      const currentHour = new Date().getHours();
+      if (currentHour >= START_HOUR) {
+        const scrollPos =
+          ((currentHour - START_HOUR - 1) / (END_HOUR - START_HOUR)) *
+          scrollContainerRef.current.scrollHeight;
+        scrollContainerRef.current.scrollTop = Math.max(0, scrollPos);
+      }
+    }
+  }, [loading]);
 
   const fetchBookings = async () => {
     try {
@@ -69,95 +118,101 @@ export const SchedulePage: React.FC = () => {
   const prevWeek = () => setCurrentDate(addDays(currentDate, -7));
   const today = () => setCurrentDate(new Date());
 
-  // Helper to calculate position
   const getEventStyle = (booking: Booking) => {
     const date = parseISO(booking.travel_time);
     const hour = getHours(date);
     const minute = getMinutes(date);
-
-    // Skip if outside viewable hours (simplification)
     if (hour < START_HOUR || hour > END_HOUR) return null;
-
-    const startMinutesFromTop = (hour - START_HOUR) * 60 + minute;
-    const top = (startMinutesFromTop / 60) * PIXELS_PER_HOUR;
-
-    // Assume 2 hours duration for visualization since we don't have end_time in DB yet
-    const durationHours = 2;
-    const height = durationHours * PIXELS_PER_HOUR;
-
-    return {
-      top: `${top}px`,
-      height: `${height}px`,
-    };
+    const top = ((hour - START_HOUR) * 60 + minute) * (PIXELS_PER_HOUR / 60);
+    const height = 2 * PIXELS_PER_HOUR; // 2 hours duration
+    return { top: `${top}px`, height: `${height}px` };
   };
 
-  const getBookingsForDate = (date: Date) => {
-    return bookings.filter((b) => isSameDay(parseISO(b.travel_time), date));
-  };
+  const getBookingsForDate = (date: Date) =>
+    bookings.filter((b) => isSameDay(parseISO(b.travel_time), date));
+
+  const totalBookingsThisWeek = weekDays.reduce(
+    (sum, day) => sum + getBookingsForDate(day).length,
+    0,
+  );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden bg-white rounded-xl shadow-sm border border-slate-200 animate-in fade-in duration-500">
-      {/* Header Toolbar */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-white z-20">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="h-6 w-6 text-blue-600" />
-            <h1 className="text-xl font-bold text-slate-900">Lịch trình xe</h1>
-          </div>
-          <div className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+    <div className="space-y-4 animate-in fade-in duration-500">
+      <PageHeader
+        title="Lịch trình xe"
+        description={`Tuần ${format(startDate, "'từ' dd/MM", { locale: vi })} — ${format(addDays(startDate, 6), "dd/MM/yyyy", { locale: vi })} · ${totalBookingsThisWeek} chuyến`}
+        icon={<CalendarIcon className="h-6 w-6" />}
+        action={
+          <button
+            onClick={fetchBookings}
+            disabled={loading}
+            className="btn-secondary inline-flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Làm mới
+          </button>
+        }
+      />
+
+      {/* Calendar Container */}
+      <div className="flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50/80">
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
             <button
               onClick={prevWeek}
-              className="p-1.5 hover:bg-white hover:shadow-sm rounded-md text-slate-600 transition-all"
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-all"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               onClick={today}
-              className="px-3 py-1 text-xs font-semibold text-slate-700 bg-white shadow-sm rounded-md"
+              className="px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
             >
               Hôm nay
             </button>
             <button
               onClick={nextWeek}
-              className="p-1.5 hover:bg-white hover:shadow-sm rounded-md text-slate-600 transition-all"
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-all"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-          <span className="text-lg font-semibold text-slate-700 ml-2">
-            Tháng {format(startDate, "MM yyyy", { locale: vi })}
+          <span className="text-sm font-semibold text-slate-700">
+            Tháng {format(startDate, "MM · yyyy")}
           </span>
         </div>
-      </div>
 
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        </div>
-      ) : (
-        <div className="flex flex-1 overflow-hidden relative">
-          {/* Scrollable Grid Area */}
+        {loading ? (
+          <div className="h-96 flex items-center justify-center">
+            <LoadingSpinner text="Đang tải lịch trình..." />
+          </div>
+        ) : (
           <div
             ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto overflow-x-auto relative"
+            className="overflow-auto"
+            style={{ maxHeight: "calc(100vh - 280px)" }}
           >
-            <div className="min-w-[800px] relative">
-              {/* Header Row (Days) */}
-              <div className="flex sticky top-0 z-10 bg-white border-b border-slate-200">
-                <div className="w-16 flex-none border-r border-slate-200 bg-white"></div>{" "}
-                {/* Time axis spacer */}
+            <div className="min-w-[700px]">
+              {/* Day Headers */}
+              <div className="flex sticky top-0 z-20 bg-white border-b border-slate-100 shadow-sm">
+                <div className="w-14 flex-none" />
                 {weekDays.map((day, i) => {
-                  const isDayToday = isToday(day);
+                  const isCurrentDay = isToday(day);
                   return (
                     <div
                       key={i}
-                      className={`flex-1 min-w-[120px] py-4 text-center border-r border-slate-200 last:border-r-0 ${isDayToday ? "bg-blue-50/30" : ""}`}
+                      className={`flex-1 min-w-[90px] py-3 text-center border-r border-slate-100 last:border-r-0 ${isCurrentDay ? "bg-blue-50/50" : ""}`}
                     >
-                      <div className="text-xs font-medium text-slate-500 uppercase mb-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                         {format(day, "EEE", { locale: vi })}
-                      </div>
+                      </p>
                       <div
-                        className={`text-xl font-medium inline-flex items-center justify-center w-8 h-8 rounded-full ${isDayToday ? "bg-blue-600 text-white shadow-md" : "text-slate-800"}`}
+                        className={`mt-1 mx-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${
+                          isCurrentDay
+                            ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                            : "text-slate-700"
+                        }`}
                       >
                         {format(day, "d")}
                       </div>
@@ -166,18 +221,18 @@ export const SchedulePage: React.FC = () => {
                 })}
               </div>
 
-              {/* Grid Body */}
-              <div className="flex relative">
-                {/* Time Axis Column */}
-                <div className="w-16 flex-none border-r border-slate-200 bg-white sticky left-0 z-10">
+              {/* Grid */}
+              <div className="flex">
+                {/* Time Column */}
+                <div className="w-14 flex-none border-r border-slate-100 bg-slate-50/50">
                   {HOURS.map((hour) => (
                     <div
                       key={hour}
-                      className="relative h-[60px]"
+                      className="relative border-b border-slate-100"
                       style={{ height: `${PIXELS_PER_HOUR}px` }}
                     >
-                      <span className="absolute -top-3 right-2 text-xs text-slate-400 font-medium bg-white px-1">
-                        {hour}:00
+                      <span className="absolute -top-2.5 right-2 text-[10px] font-semibold text-slate-400 select-none">
+                        {String(hour).padStart(2, "0")}:00
                       </span>
                     </div>
                   ))}
@@ -186,48 +241,57 @@ export const SchedulePage: React.FC = () => {
                 {/* Day Columns */}
                 {weekDays.map((day, dayIndex) => {
                   const bookingsForDay = getBookingsForDate(day);
-
                   return (
                     <div
                       key={dayIndex}
-                      className="flex-1 min-w-[120px] border-r border-slate-200 last:border-r-0 relative bg-slate-50/10"
+                      className={`flex-1 min-w-[90px] border-r border-slate-100 last:border-r-0 relative`}
                     >
-                      {/* Grid Lines */}
+                      {/* Hour lines */}
                       {HOURS.map((_, i) => (
                         <div
                           key={i}
-                          className="border-b border-slate-100 w-full absolute w-full"
-                          style={{
-                            top: `${i * PIXELS_PER_HOUR}px`,
-                            height: "1px",
-                          }}
-                        ></div>
+                          className={`border-b ${i % 2 === 0 ? "border-slate-100" : "border-slate-50"} w-full`}
+                          style={{ height: `${PIXELS_PER_HOUR}px` }}
+                        />
                       ))}
 
+                      {/* Today highlight */}
+                      {isToday(day) && (
+                        <div className="absolute inset-0 bg-blue-50/20 pointer-events-none" />
+                      )}
+
                       {/* Events */}
-                      {bookingsForDay.map((booking) => {
+                      {bookingsForDay.map((booking, bIndex) => {
                         const style = getEventStyle(booking);
                         if (!style) return null;
+                        const colorSet =
+                          BOOKING_COLORS[bIndex % BOOKING_COLORS.length];
 
                         return (
                           <div
                             key={booking.id}
-                            className="absolute left-1 right-1 px-2 py-1 rounded-md border border-blue-200 bg-blue-50 hover:bg-blue-100 hover:z-20 transition-all cursor-pointer shadow-sm overflow-hidden group"
+                            className={`absolute left-1 right-1 px-2 py-1.5 rounded-lg border ${colorSet.border} ${colorSet.bg} hover:z-20 transition-all cursor-pointer shadow-sm hover:shadow-md overflow-hidden group`}
                             style={style}
-                            title={`${booking.requester_name} - ${booking.destination}`}
+                            title={`${booking.requester_name} → ${booking.destination}`}
                           >
-                            <div className="flex border-l-2 border-blue-500 pl-1.5 h-full flex-col">
-                              <div className="font-semibold text-xs text-blue-800 truncate leading-tight">
+                            <div
+                              className={`flex border-l-2 ${colorSet.bar} pl-1.5 h-full flex-col gap-0.5`}
+                            >
+                              <div
+                                className={`font-bold text-[10px] ${colorSet.text} truncate`}
+                              >
                                 {(booking as any).vehicle?.vehicle_name ||
                                   "Xe chưa gán"}
                               </div>
-                              <div className="text-[10px] text-blue-600 font-medium truncate mt-0.5">
+                              <div
+                                className={`text-[10px] ${colorSet.sub} font-medium truncate`}
+                              >
                                 {format(parseISO(booking.travel_time), "HH:mm")}{" "}
-                                - {booking.requester_name}
+                                · {booking.requester_name}
                               </div>
-                              <div className="flex items-center gap-1 mt-1 text-slate-500">
-                                <MapPin className="h-3 w-3 flex-none" />
-                                <span className="text-[10px] truncate">
+                              <div className="flex items-center gap-1 text-slate-500 mt-0.5">
+                                <MapPin className="h-2.5 w-2.5 flex-none" />
+                                <span className="text-[9px] truncate">
                                   {booking.destination}
                                 </span>
                               </div>
@@ -236,15 +300,16 @@ export const SchedulePage: React.FC = () => {
                         );
                       })}
 
-                      {/* Current Time Indicator Line (if today) */}
+                      {/* Current time indicator */}
                       {isToday(day) && (
                         <div
-                          className="absolute w-full border-t-2 border-red-500 z-10 pointer-events-none flex items-center"
+                          className="absolute w-full z-10 pointer-events-none flex items-center"
                           style={{
-                            top: `${(((getHours(new Date()) - START_HOUR) * 60 + getMinutes(new Date())) / 60) * PIXELS_PER_HOUR}px`,
+                            top: `${((getHours(new Date()) - START_HOUR) * 60 + getMinutes(new Date())) * (PIXELS_PER_HOUR / 60)}px`,
                           }}
                         >
-                          <div className="h-2 w-2 bg-red-500 rounded-full -ml-1"></div>
+                          <div className="h-3 w-3 rounded-full bg-red-500 shadow-md shadow-red-200 -ml-1.5 flex-none" />
+                          <div className="flex-1 border-t-2 border-red-400 border-dashed" />
                         </div>
                       )}
                     </div>
@@ -253,8 +318,29 @@ export const SchedulePage: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Footer - Legend */}
+        {!loading && (
+          <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-red-500" />
+              <span className="text-xs text-slate-500 font-medium">
+                Thời điểm hiện tại
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Car className="h-3.5 w-3.5 text-blue-500" />
+              <span className="text-xs text-slate-500 font-medium">
+                {totalBookingsThisWeek} chuyến tuần này
+              </span>
+            </div>
+            <span className="text-xs text-slate-400">
+              Chỉ hiển thị đơn đã được duyệt & hoàn thành
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

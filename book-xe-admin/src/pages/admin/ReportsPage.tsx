@@ -12,8 +12,18 @@ import {
   PieChart,
   Pie,
   Cell,
+  AreaChart,
+  Area,
 } from "recharts";
-import { Loader2, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import {
+  DollarSign,
+  TrendingDown,
+  TrendingUp,
+  PieChart as PieIcon,
+} from "lucide-react";
+import { PageHeader } from "../../components/common/PageHeader";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import { StatCard } from "../../components/common/StatCard";
 
 interface CostData {
   month: string;
@@ -26,7 +36,48 @@ interface BookingStatusData {
   value: number;
 }
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+const COLORS = [
+  "#3B82F6",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#8B5CF6",
+  "#F97316",
+];
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Chờ duyệt",
+  pending_viet: "Chờ sếp Việt",
+  pending_korea: "Chờ sếp Hàn",
+  pending_admin: "Chờ admin",
+  approved: "Đã duyệt",
+  rejected: "Từ chối",
+  completed: "Hoàn thành",
+  cancelled: "Đã hủy",
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-3 text-sm">
+        <p className="font-semibold text-slate-700 mb-1">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex items-center gap-2">
+            <div
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: entry.color }}
+            />
+            <span className="text-slate-500">{entry.name}:</span>
+            <span className="font-semibold text-slate-800">
+              {entry.value.toLocaleString("vi-VN")} ₫
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 export const ReportsPage: React.FC = () => {
   const [costData, setCostData] = useState<CostData[]>([]);
@@ -40,9 +91,6 @@ export const ReportsPage: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-
-      // Fetch aggregated data (Mocked logic for aggregation as Supabase JS doesn't do complex group by easily without RPC)
-      // In a real app, use RPC or Edge Functions. Here we fetch all and calculate client-side for "Perfect" demo.
 
       const { data: fuelLogs } = await supabase
         .from("fuel_logs")
@@ -78,7 +126,6 @@ export const ReportsPage: React.FC = () => {
         const monthKey = months[d.getMonth()];
         const year = d.getFullYear();
 
-        // Filter logs for this month/year
         const monthlyFuel =
           fuelLogs
             ?.filter((l) => {
@@ -115,7 +162,7 @@ export const ReportsPage: React.FC = () => {
         }, {}) || {};
 
       const pieData = Object.keys(statusCounts).map((key) => ({
-        name: key,
+        name: STATUS_LABELS[key] || key,
         value: statusCounts[key],
       }));
       setStatusData(pieData);
@@ -127,144 +174,138 @@ export const ReportsPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    );
+    return <LoadingSpinner fullPage text="Đang tổng hợp báo cáo..." />;
   }
 
-  // Calculate totals
   const totalFuel = costData.reduce((acc, curr) => acc + curr.fuel, 0);
   const totalMaintenance = costData.reduce(
     (acc, curr) => acc + curr.maintenance,
     0,
   );
+  const totalOp = totalFuel + totalMaintenance;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Báo cáo & Thống kê
-          </h1>
-          <p className="text-slate-500">
-            Phân tích chi phí và hiệu quả vận hành (6 tháng gần nhất)
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Báo cáo & Thống kê"
+        description="Phân tích chi phí và hiệu quả vận hành (6 tháng gần nhất)"
+        icon={<PieIcon className="h-6 w-6" />}
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
-              <DollarSign className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">
-                Tổng chi phí nhiên liệu
-              </p>
-              <h3 className="text-2xl font-bold text-slate-900">
-                {totalFuel.toLocaleString("vi-VN")} ₫
-              </h3>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-red-50 rounded-xl text-red-600">
-              <TrendingDown className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">
-                Tổng chi bảo trì
-              </p>
-              <h3 className="text-2xl font-bold text-slate-900">
-                {totalMaintenance.toLocaleString("vi-VN")} ₫
-              </h3>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-green-50 rounded-xl text-green-600">
-              <TrendingUp className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">
-                Tổng chi phí vận hành
-              </p>
-              <h3 className="text-2xl font-bold text-slate-900">
-                {(totalFuel + totalMaintenance).toLocaleString("vi-VN")} ₫
-              </h3>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          title="Tổng chi phí nhiên liệu"
+          value={totalFuel}
+          icon={<DollarSign className="h-5 w-5" />}
+          color="blue"
+          suffix="₫"
+        />
+        <StatCard
+          title="Tổng chi bảo trì"
+          value={totalMaintenance}
+          icon={<TrendingDown className="h-5 w-5" />}
+          color="red"
+          suffix="₫"
+        />
+        <StatCard
+          title="Tổng chi phí vận hành"
+          value={totalOp}
+          icon={<TrendingUp className="h-5 w-5" />}
+          color="green"
+          suffix="₫"
+        />
       </div>
 
-      {/* Charts */}
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Cost Bar Chart */}
+        {/* Area Chart */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900 mb-6">
-            Biểu đồ Chi phí (VND)
-          </h3>
-          <div className="h-80">
+          <div className="mb-6">
+            <h3 className="text-base font-bold text-slate-900">
+              Chi phí theo tháng
+            </h3>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Biểu đồ theo dõi xu hướng chi phí vận hành
+            </p>
+          </div>
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={costData}>
+              <AreaChart data={costData}>
+                <defs>
+                  <linearGradient id="colorFuel" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorMaint" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#EF4444" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#E2E8F0"
+                  stroke="#F1F5F9"
                 />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} />
+                <XAxis
+                  dataKey="month"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12 }}
+                />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(value) => `${value / 1000000}M`}
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`}
                 />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "none",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                  }}
+                <Tooltip content={<CustomTooltip />} />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: "12px" }}
                 />
-                <Legend />
-                <Bar
+                <Area
+                  type="monotone"
                   dataKey="fuel"
                   name="Nhiên liệu"
-                  fill="#3B82F6"
-                  radius={[4, 4, 0, 0]}
+                  stroke="#3B82F6"
+                  strokeWidth={2}
+                  fill="url(#colorFuel)"
                 />
-                <Bar
+                <Area
+                  type="monotone"
                   dataKey="maintenance"
                   name="Bảo trì"
-                  fill="#EF4444"
-                  radius={[4, 4, 0, 0]}
+                  stroke="#EF4444"
+                  strokeWidth={2}
+                  fill="url(#colorMaint)"
                 />
-              </BarChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Status Pie Chart */}
+        {/* Pie Chart */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900 mb-6">
-            Tỷ lệ Trạng thái Đơn hàng
-          </h3>
-          <div className="h-80">
+          <div className="mb-6">
+            <h3 className="text-base font-bold text-slate-900">
+              Tỷ lệ trạng thái đơn hàng
+            </h3>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Phân bổ đơn đặt xe theo trạng thái
+            </p>
+          </div>
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={statusData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  paddingAngle={5}
+                  innerRadius={70}
+                  outerRadius={110}
+                  paddingAngle={3}
                   dataKey="value"
                 >
                   {statusData.map((_, index) => (
@@ -274,11 +315,75 @@ export const ReportsPage: React.FC = () => {
                     />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "12px",
+                    border: "1px solid #f1f5f9",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                    fontSize: "12px",
+                  }}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: "12px" }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      </div>
+
+      {/* Bar Chart full width */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="mb-6">
+          <h3 className="text-base font-bold text-slate-900">
+            So sánh chi phí nhiên liệu & bảo trì
+          </h3>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Biểu đồ so sánh chi tiết theo từng tháng
+          </p>
+        </div>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={costData} barGap={4}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="#F1F5F9"
+              />
+              <XAxis
+                dataKey="month"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 11 }}
+                tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{ fontSize: "12px" }}
+              />
+              <Bar
+                dataKey="fuel"
+                name="Nhiên liệu"
+                fill="#3B82F6"
+                radius={[6, 6, 0, 0]}
+              />
+              <Bar
+                dataKey="maintenance"
+                name="Bảo trì"
+                fill="#EF4444"
+                radius={[6, 6, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

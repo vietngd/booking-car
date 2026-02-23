@@ -1,12 +1,41 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../app/supabase";
 import type { MasterData } from "../../types";
-import { Plus, Edit2, Trash2, CheckCircle, XCircle } from "lucide-react";
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  LayoutList,
+  Building,
+  Package,
+  Weight,
+} from "lucide-react";
 import { useConfirm } from "../../components/common/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Table, type Column } from "../../components/common/table/Table";
+import { PageHeader } from "../../components/common/PageHeader";
 
 type MasterDataType = "department" | "cargo_type" | "cargo_weight";
+
+const tabs: { id: MasterDataType; label: string; icon: React.ReactNode }[] = [
+  {
+    id: "department",
+    label: "Phòng ban / Bộ phận",
+    icon: <Building className="h-4 w-4" />,
+  },
+  {
+    id: "cargo_type",
+    label: "Loại hàng hóa",
+    icon: <Package className="h-4 w-4" />,
+  },
+  {
+    id: "cargo_weight",
+    label: "Trọng lượng",
+    icon: <Weight className="h-4 w-4" />,
+  },
+];
 
 export const MasterDataPage: React.FC = () => {
   const [data, setData] = useState<MasterData[]>([]);
@@ -59,13 +88,8 @@ export const MasterDataPage: React.FC = () => {
         .from("master_data")
         .delete()
         .eq("id", item.id);
-
       if (error) throw error;
-
-      toast({
-        title: "Thành công",
-        description: "Đã xóa dữ liệu",
-      });
+      toast({ title: "Thành công", description: "Đã xóa dữ liệu" });
       fetchData();
     } catch (err) {
       console.error("Error deleting item:", err);
@@ -95,29 +119,48 @@ export const MasterDataPage: React.FC = () => {
 
   const columns: Column<MasterData>[] = [
     {
-      header: "Tên hiển thị (Label)",
-      accessorKey: "label",
-      className: "font-medium text-slate-900",
+      header: "Tên hiển thị",
+      cell: (item) => (
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center flex-none">
+            <span className="text-blue-600 font-bold text-xs">
+              {item.label[0]?.toUpperCase()}
+            </span>
+          </div>
+          <span className="font-semibold text-slate-900 text-sm">
+            {item.label}
+          </span>
+        </div>
+      ),
     },
     {
-      header: "Giá trị (Value)",
-      accessorKey: "value",
+      header: "Giá trị",
+      cell: (item) => (
+        <code className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-mono">
+          {item.value}
+        </code>
+      ),
     },
     {
       header: "Thứ tự",
-      accessorKey: "sort_order",
+      cell: (item) => (
+        <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center">
+          <span className="text-xs font-bold text-slate-500">
+            {item.sort_order}
+          </span>
+        </div>
+      ),
     },
     {
       header: "Trạng thái",
-      accessorKey: "is_active",
       cell: (item) =>
         item.is_active ? (
-          <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
             <CheckCircle className="h-3 w-3" />
             Hoạt động
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-slate-400 text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-50 text-slate-500 border border-slate-200">
             <XCircle className="h-3 w-3" />
             Ẩn
           </span>
@@ -127,7 +170,7 @@ export const MasterDataPage: React.FC = () => {
       header: "Thao tác",
       className: "text-right",
       cell: (item: MasterData) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-1">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -142,7 +185,7 @@ export const MasterDataPage: React.FC = () => {
               e.stopPropagation();
               handleDelete(item);
             }}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -151,58 +194,46 @@ export const MasterDataPage: React.FC = () => {
     },
   ];
 
-  const tabs: { id: MasterDataType; label: string }[] = [
-    { id: "department", label: "Phòng ban / Bộ phận" },
-    { id: "cargo_type", label: "Loại hàng hóa" },
-    { id: "cargo_weight", label: "Trọng lượng" },
-  ];
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Quản lý Danh mục
-          </h1>
-          <p className="text-slate-500">
-            Quản lý các dữ liệu danh mục dùng chung
-          </p>
-        </div>
-        <button
-          onClick={handleAdd}
-          className="btn-primary inline-flex items-center gap-2 shadow-lg shadow-blue-200"
-        >
-          <Plus className="h-5 w-5" />
-          Thêm mới
-        </button>
-      </div>
+      <PageHeader
+        title="Quản lý Danh mục"
+        description="Quản lý các dữ liệu danh mục dùng chung trong hệ thống"
+        icon={<LayoutList className="h-6 w-6" />}
+        action={
+          <button
+            onClick={handleAdd}
+            className="btn-primary inline-flex items-center gap-2 shadow-lg shadow-blue-200"
+          >
+            <Plus className="h-4 w-4" />
+            Thêm mới
+          </button>
+        }
+      />
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-1">
-        <div className="flex space-x-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
-                activeTab === tab.id
-                  ? "bg-blue-50 text-blue-700 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-1.5 inline-flex w-full">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-xl transition-all ${
+              activeTab === tab.id
+                ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {tab.icon}
+            <span className="hidden sm:inline">{tab.label}</span>
+          </button>
+        ))}
       </div>
 
-      {/* List */}
       <Table
         data={data}
         columns={columns}
         loading={loading}
-        emptyMessage="Chưa có dữ liệu danh mục"
+        emptyMessage="Chưa có dữ liệu danh mục. Nhấn 'Thêm mới' để bắt đầu."
       />
 
       {showForm && (
@@ -239,7 +270,7 @@ const MasterDataFormModal: React.FC<{
       const dataToSave = {
         ...formData,
         type: type,
-        value: formData.value || formData.label, // Default value to label if empty
+        value: formData.value || formData.label,
         updated_at: new Date().toISOString(),
       };
 
@@ -282,17 +313,20 @@ const MasterDataFormModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
-        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl">
-          <h2 className="text-xl font-bold text-slate-900">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
+          <h2 className="text-lg font-bold text-white">
             {item ? `Sửa ${getTypeName(type)}` : `Thêm ${getTypeName(type)}`}
           </h2>
+          <p className="text-blue-200 text-sm mt-0.5">
+            Điền đầy đủ thông tin bên dưới
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Tên hiển thị (Label) <span className="text-red-500">*</span>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+              Tên hiển thị <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -306,8 +340,9 @@ const MasterDataFormModal: React.FC<{
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Giá trị (Value) (Tùy chọn)
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+              Giá trị{" "}
+              <span className="text-slate-400 font-normal">(tùy chọn)</span>
             </label>
             <input
               type="text"
@@ -316,11 +351,11 @@ const MasterDataFormModal: React.FC<{
               onChange={(e) =>
                 setFormData({ ...formData, value: e.target.value })
               }
-              placeholder="Để trống sẽ tự động lấy theo Label"
+              placeholder="Để trống sẽ tự lấy theo tên hiển thị"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
               Thứ tự sắp xếp
             </label>
             <input
@@ -332,25 +367,26 @@ const MasterDataFormModal: React.FC<{
               }
             />
           </div>
-          <div className="flex items-center gap-2">
+          <label className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors">
             <input
               type="checkbox"
-              id="is_active"
               checked={formData.is_active}
               onChange={(e) =>
                 setFormData({ ...formData, is_active: e.target.checked })
               }
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
             />
-            <label
-              htmlFor="is_active"
-              className="text-sm font-medium text-slate-700"
-            >
-              Đang hoạt động
-            </label>
-          </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-700">
+                Đang hoạt động
+              </p>
+              <p className="text-xs text-slate-500">
+                Hiển thị trong danh sách lựa chọn
+              </p>
+            </div>
+          </label>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
@@ -364,7 +400,7 @@ const MasterDataFormModal: React.FC<{
               className="btn-primary flex-1"
               disabled={saving}
             >
-              {saving ? "Đang lưu..." : "Lưu"}
+              {saving ? "Đang lưu..." : item ? "Cập nhật" : "Thêm mới"}
             </button>
           </div>
         </form>
